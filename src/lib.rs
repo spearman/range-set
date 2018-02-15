@@ -19,88 +19,61 @@ pub use range_compare::{
 /// A set of elements represented as a sorted list of inclusive ranges.
 ///
 /// ```
-/// # #![feature(inclusive_range_syntax)]
-/// # use range_set::RangeSet;
-/// let mut s = RangeSet::<u8>::from (0..=3);
-/// assert!(s.insert_range (7..=10).is_none());
-/// let mut v = Vec::new();
-/// for b in s.iter() {
-///   v.push (b);
-/// }
-/// assert_eq!(v, vec![0,1,2,3,7,8,9,10]);
-/// assert!(s.insert_range (4..=6).is_none());
-/// v.clear();
-/// for b in s.iter() {
-///   v.push (b);
-/// }
-/// assert_eq!(v, vec![0,1,2,3,4,5,6,7,8,9,10]);
-/// assert_eq!(
-///   s.insert_range (7..=12),
-///   Some (RangeSet::from (7..=10)));
-/// v.clear();
-/// for b in s.iter() {
-///   v.push (b);
-/// }
-/// assert_eq!(v, vec![0,1,2,3,4,5,6,7,8,9,10,11,12]);
-/// ```
-#[derive(Debug,Eq,PartialEq)]
-pub struct RangeSet <T : num::PrimInt> {
-  ranges : smallvec::SmallVec <[std::ops::RangeInclusive <T>; 1]>
-}
-
-pub struct Iter <'a, T : 'a + num::PrimInt> {
-  range_set:   &'a RangeSet <T>,
-  range_index: usize,
-  range:       std::ops::RangeInclusive <T>
-}
-
-///////////////////////////////////////////////////////////////////////////////
-//  functions                                                                //
-///////////////////////////////////////////////////////////////////////////////
-
-/// Tests a raw smallvec of ranges for validity as a range set: the element
-/// ranges must be properly disjoint (not adjacent) and sorted.
-///
-/// ```
+/// # #![feature(inclusive_range)]
 /// # #![feature(inclusive_range_syntax)]
 /// # extern crate smallvec;
 /// # extern crate range_set;
+/// # use range_set::RangeSet;
 /// # use smallvec::SmallVec;
-/// # use range_set::*;
+/// # use std::ops::RangeInclusive;
 /// # fn main() {
-/// let mut v = SmallVec::new();
-/// assert!(valid_range_vec (&v));
-/// v.push (0..=3);
-/// assert!(valid_range_vec (&v));
-/// v.push (6..=10);
-/// assert!(valid_range_vec (&v));
-/// v.push (0..=1);
-/// assert!(!valid_range_vec (&v));
+/// let mut s = RangeSet::<[RangeInclusive <u8>; 2]>::from (0..=2);
+/// assert!(!s.spilled());
+///
+/// assert!(s.insert_range (8..=10).is_none());
+/// let v : Vec <u8> = s.iter().collect();
+/// assert_eq!(v, vec![0,1,2,8,9,10]);
+/// assert!(!s.spilled());
+///
+/// assert!(s.insert_range (4..=6).is_none());
+/// let v : Vec <u8> = s.iter().collect();
+/// assert_eq!(v, vec![0,1,2,4,5,6,8,9,10]);
+/// assert!(s.spilled());
+///
+/// assert_eq!(s.insert_range (3..=12), Some (
+///   RangeSet::from_ranges (SmallVec::from_vec (vec![4..=6, 8..=10])).unwrap()
+/// ));
+/// let v : Vec <u8> = s.iter().collect();
+/// assert_eq!(v, vec![0,1,2,3,4,5,6,7,8,9,10,11,12]);
 /// # }
 /// ```
-pub fn valid_range_vec <T : num::PrimInt>
-  (ranges : &smallvec::SmallVec <[std::ops::RangeInclusive <T>; 1]>) -> bool
+#[derive(Debug,Eq,PartialEq)]
+pub struct RangeSet <A> where
+  A       : smallvec::Array + Eq + std::fmt::Debug,
+  A::Item : Eq + std::fmt::Debug
 {
-  if !ranges.is_empty() {
-    for i in 0..ranges.len()-1 { // safe to subtract here since non-empty
-      let this = &ranges[i];
-      let next = &ranges[i+1];  // safe to index
-      if is_empty (this) || is_empty (next) {
-        return false
-      }
-      if next.start <= this.end+T::one() {
-        return false
-      }
-    }
-  }
-  true
+  ranges : smallvec::SmallVec <A>
+}
+
+pub struct Iter <'a, A, T> where
+  A : 'a + smallvec::Array <Item=std::ops::RangeInclusive <T>>
+    + Eq + std::fmt::Debug,
+  T : 'a + num::PrimInt + std::fmt::Debug
+{
+  range_set:   &'a RangeSet <A>,
+  range_index: usize,
+  range:       std::ops::RangeInclusive <T>
 }
 
 ///////////////////////////////////////////////////////////////////////////////
 //  impls                                                                    //
 ///////////////////////////////////////////////////////////////////////////////
 
-impl <T : num::PrimInt + std::fmt::Debug> RangeSet <T> {
+impl <A, T> RangeSet <A> where
+  A : smallvec::Array <Item=std::ops::RangeInclusive <T>>
+    + Eq + std::fmt::Debug,
+  T : num::PrimInt + std::fmt::Debug
+{
   /// New empty range set
   #[inline]
   pub fn new() -> Self {
@@ -112,10 +85,8 @@ impl <T : num::PrimInt + std::fmt::Debug> RangeSet <T> {
   /// Returns a new range set if the given vector of ranges is valid
   /// (`valid_range_vec`)
   #[inline]
-  pub fn from_ranges (
-    ranges : smallvec::SmallVec <[std::ops::RangeInclusive <T>; 1]>
-  ) -> Option <Self> {
-    if valid_range_vec (&ranges) {
+  pub fn from_ranges (ranges : smallvec::SmallVec <A>) -> Option <Self> {
+    if Self::valid_range_vec (&ranges) {
       Some (RangeSet { ranges })
     } else {
       None
@@ -132,13 +103,15 @@ impl <T : num::PrimInt + std::fmt::Debug> RangeSet <T> {
   /// with the curret range set.
   ///
   /// ```
+  /// # #![feature(inclusive_range)]
   /// # #![feature(inclusive_range_syntax)]
   /// # use range_set::RangeSet;
-  /// let mut s = RangeSet::<u8>::from (0..=5);
+  /// # use std::ops::RangeInclusive;
+  /// let mut s = RangeSet::<[RangeInclusive <u8>; 2]>::from (0..=5);
   /// assert_eq!(s.insert_range ( 3..=10), Some (RangeSet::from (3..=5)));
   /// assert_eq!(s.insert_range (20..=30), None);
   /// ```
-  pub fn insert_range (&mut self, range : std::ops::RangeInclusive <T>)
+  pub fn insert_range (&mut self, range : A::Item)
     -> Option <Self>
   {
     if is_empty (&range) {       // empty range
@@ -165,10 +138,13 @@ impl <T : num::PrimInt + std::fmt::Debug> RangeSet <T> {
           }
           debug_assert!(isect.is_valid());
         }
-        self.ranges = smallvec::SmallVec::from_buf ([
-          std::cmp::min (range.start, self.ranges[0].start)..=
-          std::cmp::max (range.end,   self.ranges[self.ranges.len()-1].end)
-        ]);
+        self.ranges = {
+          let mut v = smallvec::SmallVec::new();
+          v.push (
+            std::cmp::min (range.start, self.ranges[0].start)..=
+            std::cmp::max (range.end,   self.ranges[self.ranges.len()-1].end));
+          v
+        };
         if !isect.is_empty() {
           Some (isect)
         } else {
@@ -269,18 +245,64 @@ impl <T : num::PrimInt + std::fmt::Debug> RangeSet <T> {
   } // end fn insert_range
 
   /// Returns the removed elements if they were present
-  pub fn remove_range (&mut self, range : std::ops::RangeInclusive <T>)
+  pub fn remove_range (&mut self, _range : std::ops::RangeInclusive <T>)
     -> Option <Self>
   {
     unimplemented!()
   }
 
-  pub fn iter (&self) -> Iter <T> {
+  pub fn iter (&self) -> Iter <A, T> {
     Iter {
       range_set:   self,
       range_index: 0,
       range:       T::one()..=T::zero()
     }
+  }
+
+  /// Tests a raw smallvec of ranges for validity as a range set: the element
+  /// ranges must be properly disjoint (not adjacent) and sorted.
+  ///
+  /// ```
+  /// # #![feature(inclusive_range)]
+  /// # #![feature(inclusive_range_syntax)]
+  /// # extern crate smallvec;
+  /// # extern crate range_set;
+  /// # use std::ops::RangeInclusive;
+  /// # use smallvec::SmallVec;
+  /// # use range_set::*;
+  /// # fn main() {
+  /// let mut v = SmallVec::<[RangeInclusive <u8>; 2]>::new();
+  /// assert!(RangeSet::valid_range_vec (&v));
+  /// v.push (0..=3);
+  /// assert!(RangeSet::valid_range_vec (&v));
+  /// v.push (6..=10);
+  /// assert!(RangeSet::valid_range_vec (&v));
+  /// v.push (0..=1);
+  /// assert!(!RangeSet::valid_range_vec (&v));
+  /// # }
+  /// ```
+  pub fn valid_range_vec (
+    ranges : &smallvec::SmallVec <A>
+  ) -> bool {
+    if !ranges.is_empty() {
+      for i in 0..ranges.len()-1 { // safe to subtract here since non-empty
+        let this = &ranges[i];
+        let next = &ranges[i+1];  // safe to index
+        if is_empty (this) || is_empty (next) {
+          return false
+        }
+        if next.start <= this.end+T::one() {
+          return false
+        }
+      }
+    }
+    true
+  }
+
+  /// Calls `spilled` on the underlying smallvec
+  #[inline]
+  pub fn spilled (&self) -> bool {
+    self.ranges.spilled()
   }
 
   /// Insert helper function: search for the last range in self that is
@@ -346,19 +368,29 @@ impl <T : num::PrimInt + std::fmt::Debug> RangeSet <T> {
   /// exposed to the user.
   #[inline]
   fn is_valid (&self) -> bool {
-    valid_range_vec (&self.ranges)
+    Self::valid_range_vec (&self.ranges)
   }
 }
 
-impl <T : num::PrimInt> From <std::ops::RangeInclusive <T>> for RangeSet <T> {
+impl <A, T> From <std::ops::RangeInclusive <T>> for RangeSet <A> where
+  A : smallvec::Array <Item=std::ops::RangeInclusive <T>>
+    + Eq + std::fmt::Debug,
+  T : num::PrimInt + std::fmt::Debug
+{
   fn from (range : std::ops::RangeInclusive <T>) -> Self {
-    RangeSet {
-      ranges: smallvec::SmallVec::from ([range])
-    }
+    let ranges = {
+      let mut v = smallvec::SmallVec::new();
+      v.push (range);
+      v
+    };
+    RangeSet { ranges }
   }
 }
 
-impl <'a, T : num::PrimInt> Iterator for Iter <'a, T> where
+impl <'a, A, T> Iterator for Iter <'a, A, T> where
+  A : smallvec::Array <Item=std::ops::RangeInclusive <T>>
+    + Eq + std::fmt::Debug,
+  T : num::PrimInt + std::fmt::Debug,
   std::ops::RangeInclusive <T> : Clone + Iterator <Item=T>
 {
   type Item = T;
