@@ -1,0 +1,8 @@
+[package]
+name = "range-set"
+version = "0.0.0"
+authors = ["Shane Pearman <spearman@github.com>"]
+
+[dependencies]
+num = "0.1.*"
+smallvec = "0.6.*"
