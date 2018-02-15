@@ -27,22 +27,19 @@ pub use range_compare::{
 /// # use smallvec::SmallVec;
 /// # use std::ops::RangeInclusive;
 /// # fn main() {
-/// let mut s = RangeSet::<[RangeInclusive <u8>; 2]>::from (0..=2);
+/// let mut s = RangeSet::<[RangeInclusive <u8>; 1]>::from (0..=2);
+/// println!("s: {:?}", s);
 /// assert!(!s.spilled());
 ///
 /// assert!(s.insert_range (8..=10).is_none());
+/// println!("s: {:?}", s);
+/// assert!(s.spilled());
 /// let v : Vec <u8> = s.iter().collect();
 /// assert_eq!(v, vec![0,1,2,8,9,10]);
+///
+/// assert_eq!(s.insert_range (3..=12), Some (RangeSet::from (8..=10)));
+/// println!("s: {:?}", s);
 /// assert!(!s.spilled());
-///
-/// assert!(s.insert_range (4..=6).is_none());
-/// let v : Vec <u8> = s.iter().collect();
-/// assert_eq!(v, vec![0,1,2,4,5,6,8,9,10]);
-/// assert!(s.spilled());
-///
-/// assert_eq!(s.insert_range (3..=12), Some (
-///   RangeSet::from_ranges (SmallVec::from_vec (vec![4..=6, 8..=10])).unwrap()
-/// ));
 /// let v : Vec <u8> = s.iter().collect();
 /// assert_eq!(v, vec![0,1,2,3,4,5,6,7,8,9,10,11,12]);
 /// # }
@@ -52,7 +49,7 @@ pub struct RangeSet <A> where
   A       : smallvec::Array + Eq + std::fmt::Debug,
   A::Item : Eq + std::fmt::Debug
 {
-  ranges : smallvec::SmallVec <A>
+  ranges  : smallvec::SmallVec <A>
 }
 
 pub struct Iter <'a, A, T> where
@@ -60,9 +57,77 @@ pub struct Iter <'a, A, T> where
     + Eq + std::fmt::Debug,
   T : 'a + num::PrimInt + std::fmt::Debug
 {
-  range_set:   &'a RangeSet <A>,
-  range_index: usize,
-  range:       std::ops::RangeInclusive <T>
+  range_set   : &'a RangeSet <A>,
+  range_index : usize,
+  range       :std::ops::RangeInclusive <T>
+}
+
+///////////////////////////////////////////////////////////////////////////////
+//  functions                                                                //
+///////////////////////////////////////////////////////////////////////////////
+
+/// Report some sizes of various range set types
+pub fn report() {
+  use std::ops::RangeInclusive;
+
+  println!("RangeSet report...");
+
+  println!("  size of RangeSet <[RangeInclusive <u8>; 1]>: {}",
+    std::mem::size_of::<RangeSet <[RangeInclusive <u8>; 1]>>());
+  println!("  size of RangeSet <[RangeInclusive <u16>; 1]>: {}",
+    std::mem::size_of::<RangeSet <[RangeInclusive <u16>; 1]>>());
+  println!("  size of RangeSet <[RangeInclusive <u32>; 1]>: {}",
+    std::mem::size_of::<RangeSet <[RangeInclusive <u32>; 1]>>());
+  println!("  size of RangeSet <[RangeInclusive <u64>; 1]>: {}",
+    std::mem::size_of::<RangeSet <[RangeInclusive <u64>; 1]>>());
+  println!("  size of RangeSet <[RangeInclusive <usize>; 1]>: {}",
+    std::mem::size_of::<RangeSet <[RangeInclusive <usize>; 1]>>());
+
+  println!("  size of RangeSet <[RangeInclusive <u8>; 2]>: {}",
+    std::mem::size_of::<RangeSet <[RangeInclusive <u8>; 2]>>());
+  println!("  size of RangeSet <[RangeInclusive <u16>; 2]>: {}",
+    std::mem::size_of::<RangeSet <[RangeInclusive <u16>; 2]>>());
+  println!("  size of RangeSet <[RangeInclusive <u32>; 2]>: {}",
+    std::mem::size_of::<RangeSet <[RangeInclusive <u32>; 2]>>());
+  println!("  size of RangeSet <[RangeInclusive <u64>; 2]>: {}",
+    std::mem::size_of::<RangeSet <[RangeInclusive <u64>; 2]>>());
+  println!("  size of RangeSet <[RangeInclusive <usize>; 2]>: {}",
+    std::mem::size_of::<RangeSet <[RangeInclusive <usize>; 2]>>());
+
+  println!("  size of RangeSet <[RangeInclusive <u8>; 4]>: {}",
+    std::mem::size_of::<RangeSet <[RangeInclusive <u8>; 4]>>());
+  println!("  size of RangeSet <[RangeInclusive <u16>; 4]>: {}",
+    std::mem::size_of::<RangeSet <[RangeInclusive <u16>; 4]>>());
+  println!("  size of RangeSet <[RangeInclusive <u32>; 4]>: {}",
+    std::mem::size_of::<RangeSet <[RangeInclusive <u32>; 4]>>());
+  println!("  size of RangeSet <[RangeInclusive <u64>; 4]>: {}",
+    std::mem::size_of::<RangeSet <[RangeInclusive <u64>; 4]>>());
+  println!("  size of RangeSet <[RangeInclusive <usize>; 4]>: {}",
+    std::mem::size_of::<RangeSet <[RangeInclusive <usize>; 4]>>());
+
+  println!("  size of RangeSet <[RangeInclusive <u8>; 8]>: {}",
+    std::mem::size_of::<RangeSet <[RangeInclusive <u8>; 8]>>());
+  println!("  size of RangeSet <[RangeInclusive <u16>; 8]>: {}",
+    std::mem::size_of::<RangeSet <[RangeInclusive <u16>; 8]>>());
+  println!("  size of RangeSet <[RangeInclusive <u32>; 8]>: {}",
+    std::mem::size_of::<RangeSet <[RangeInclusive <u32>; 8]>>());
+  println!("  size of RangeSet <[RangeInclusive <u64>; 8]>: {}",
+    std::mem::size_of::<RangeSet <[RangeInclusive <u64>; 8]>>());
+  println!("  size of RangeSet <[RangeInclusive <usize>; 8]>: {}",
+    std::mem::size_of::<RangeSet <[RangeInclusive <usize>; 8]>>());
+
+  println!("  size of RangeSet <[RangeInclusive <u8>; 16]>: {}",
+    std::mem::size_of::<RangeSet <[RangeInclusive <u8>; 16]>>());
+  println!("  size of RangeSet <[RangeInclusive <u16>; 16]>: {}",
+    std::mem::size_of::<RangeSet <[RangeInclusive <u16>; 16]>>());
+  println!("  size of RangeSet <[RangeInclusive <u32>; 16]>: {}",
+    std::mem::size_of::<RangeSet <[RangeInclusive <u32>; 16]>>());
+  println!("  size of RangeSet <[RangeInclusive <u64>; 16]>: {}",
+    std::mem::size_of::<RangeSet <[RangeInclusive <u64>; 16]>>());
+  println!("  size of RangeSet <[RangeInclusive <usize>; 16]>: {}",
+    std::mem::size_of::<RangeSet <[RangeInclusive <usize>; 16]>>());
+
+  println!("...RangeSet report");
 }
 
 ///////////////////////////////////////////////////////////////////////////////
