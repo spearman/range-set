@@ -1,3 +1,4 @@
-- remove
-- merge
-- more set operations
+- set operations
+  - union
+  - intersection
+  - difference

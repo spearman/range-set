@@ -20,13 +20,13 @@ fn main() {
 
   assert_eq!(s.insert_range (3..=12), Some (RangeSet::from (8..=10)));
   println!("s: {:?}", s);
-  assert!(!s.spilled());
+  assert!(s.spilled());
   let v : Vec <u8> = s.iter().collect();
   assert_eq!(v, vec![0,1,2,3,4,5,6,7,8,9,10,11,12]);
 
   assert_eq!(s.remove_range (0..=2), Some (RangeSet::from (0..=2)));
   println!("s: {:?}", s);
-  assert!(!s.spilled());
+  assert!(s.spilled());
   let v : Vec <u8> = s.iter().collect();
   assert_eq!(v, vec![3,4,5,6,7,8,9,10,11,12]);
 
@@ -51,15 +51,15 @@ fn main() {
 
   assert_eq!(s.remove_range (5..=20), Some (RangeSet::from (11..=12)));
   println!("s: {:?}", s);
-  // /!\ spilled status does not get reset here
-  //assert!(!s.spilled());
+  assert!(s.spilled());   // stays spilled
+  s.shrink_to_fit();      // manually un-spill
+  assert!(!s.spilled());  // no longer spilled
   let v : Vec <u8> = s.iter().collect();
   assert_eq!(v, vec![3,4]);
 
   assert_eq!(s.remove_range (0..=10), Some (RangeSet::from (3..=4)));
   println!("s: {:?}", s);
-  // /!\ spilled status does not get reset here
-  //assert!(!s.spilled());
+  assert!(!s.spilled());
   let v : Vec <u8> = s.iter().collect();
   assert_eq!(v, vec![]);
 }

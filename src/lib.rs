@@ -16,7 +16,8 @@ pub use range_compare::{
 //  structs                                                                  //
 ///////////////////////////////////////////////////////////////////////////////
 
-/// A set of elements represented as a sorted list of inclusive ranges.
+/// A set of primitive integers represented as a sorted list of inclusive
+/// ranges.
 ///
 /// ```
 /// # #![feature(inclusive_range)]
@@ -39,9 +40,11 @@ pub use range_compare::{
 ///
 /// assert_eq!(s.insert_range (3..=12), Some (RangeSet::from (8..=10)));
 /// println!("s: {:?}", s);
-/// assert!(!s.spilled());
+/// assert!(s.spilled());  // once spilled, stays spilled
 /// let v : Vec <u32> = s.iter().collect();
 /// assert_eq!(v, vec![0,1,2,3,4,5,6,7,8,9,10,11,12]);
+/// s.shrink_to_fit();  // manually un-spill
+/// assert!(!s.spilled());
 /// # }
 /// ```
 #[derive(Clone,Debug,Eq,PartialEq)]
@@ -134,6 +137,11 @@ pub fn report() {
 //  impls                                                                    //
 ///////////////////////////////////////////////////////////////////////////////
 
+// the majority of the logic for modifying range sets are the insert_range and
+// remove_range methods
+//
+// there are some helper functions with additional logic such as the
+// binary_search functions
 impl <A, T> RangeSet <A> where
   A : smallvec::Array <Item=std::ops::RangeInclusive <T>>
     + Eq + std::fmt::Debug,
@@ -144,6 +152,15 @@ impl <A, T> RangeSet <A> where
   pub fn new() -> Self {
     RangeSet {
       ranges: smallvec::SmallVec::new()
+    }
+  }
+
+  /// New empty range set with the internal smallvec initialized with the given
+  /// initial capacity
+  #[inline]
+  pub fn with_capacity (capacity : usize) -> Self {
+    RangeSet {
+      ranges: smallvec::SmallVec::with_capacity (capacity)
     }
   }
 
@@ -162,6 +179,78 @@ impl <A, T> RangeSet <A> where
   #[inline]
   pub fn is_empty (&self) -> bool {
     self.ranges.is_empty()
+  }
+
+  /// Clears the range set
+  #[inline]
+  pub fn clear (&mut self) {
+    self.ranges.clear()
+  }
+
+  /// Converts into the internal smallvec
+  #[inline]
+  pub fn into_smallvec (self) -> smallvec::SmallVec <A> {
+    self.ranges
+  }
+
+  /// Insert a single element, returning true if it was successfully inserted
+  /// or else false if it was already present
+  ///
+  /// ```
+  /// # #![feature(inclusive_range)]
+  /// # #![feature(inclusive_range_syntax)]
+  /// # use range_set::RangeSet;
+  /// # use std::ops::RangeInclusive;
+  /// let mut s = RangeSet::<[RangeInclusive <u32>; 2]>::new();
+  /// assert!(s.insert (4));
+  /// assert_eq!(s, RangeSet::from (4..=4));
+  /// assert!(!s.insert (4));
+  /// assert_eq!(s, RangeSet::from (4..=4));
+  /// assert!(s.insert (5));
+  /// assert_eq!(s, RangeSet::from (4..=5));
+  /// assert!(s.insert (3));
+  /// assert_eq!(s, RangeSet::from (3..=5));
+  /// assert!(s.insert (10));
+  /// assert_eq!(s, RangeSet::from_ranges (vec![3..=5, 10..=10].into()).unwrap());
+  /// ```
+  pub fn insert (&mut self, element : T) -> bool {
+    if let Some (_) = self.insert_range (element..=element) {
+      false
+    } else {
+      true
+    }
+  }
+
+  /// Remove a single element, returning true if it was successfully removed
+  /// or else false if it was not present
+  ///
+  /// ```
+  /// # #![feature(inclusive_range)]
+  /// # #![feature(inclusive_range_syntax)]
+  /// # use range_set::RangeSet;
+  /// # use std::ops::RangeInclusive;
+  /// let mut s = RangeSet::<[RangeInclusive <u32>; 2]>::from (0..=5);
+  /// assert!(s.remove (1));
+  /// assert_eq!(s, RangeSet::from_ranges (vec![0..=0, 2..=5].into()).unwrap());
+  /// assert!(!s.remove (1));
+  /// assert_eq!(s, RangeSet::from_ranges (vec![0..=0, 2..=5].into()).unwrap());
+  /// assert!(s.remove (4));
+  /// assert_eq!(s, RangeSet::from_ranges (vec![0..=0, 2..=3, 5..=5].into()).unwrap());
+  /// assert!(s.remove (3));
+  /// assert_eq!(s, RangeSet::from_ranges (vec![0..=0, 2..=2, 5..=5].into()).unwrap());
+  /// assert!(s.remove (2));
+  /// assert_eq!(s, RangeSet::from_ranges (vec![0..=0, 5..=5].into()).unwrap());
+  /// assert!(s.remove (0));
+  /// assert_eq!(s, RangeSet::from (5..=5));
+  /// assert!(s.remove (5));
+  /// assert!(s.is_empty());
+  /// ```
+  pub fn remove (&mut self, element : T) -> bool {
+    if let Some (_) = self.remove_range (element..=element) {
+      true
+    } else {
+      false
+    }
   }
 
   /// Returns the intersected values if the range is not disjoint
@@ -194,13 +283,11 @@ impl <A, T> RangeSet <A> where
       // of the intersection of the given range and the existing range set
       (None, None) => {
         let isect = self.range_intersection (&range, 0..self.ranges.len());
-        self.ranges = {
-          let mut v = smallvec::SmallVec::new();
-          v.push (
-            std::cmp::min (range.start, self.ranges[0].start)..=
-            std::cmp::max (range.end,   self.ranges[self.ranges.len()-1].end));
-          v
-        };
+        let new_range =
+          std::cmp::min (range.start, self.ranges[0].start)..=
+          std::cmp::max (range.end,   self.ranges[self.ranges.len()-1].end);
+        self.ranges.clear();
+        self.ranges.push (new_range);
         if !isect.is_empty() {
           Some (isect)
         } else {
@@ -409,6 +496,12 @@ impl <A, T> RangeSet <A> where
   #[inline]
   pub fn spilled (&self) -> bool {
     self.ranges.spilled()
+  }
+
+  /// Calls `shrink_to_fit` on the underlying smallvec
+  #[inline]
+  pub fn shrink_to_fit (&mut self) {
+    self.ranges.shrink_to_fit()
   }
 
   /// Insert helper function: search for the last range in self that is

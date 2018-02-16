@@ -1,10 +1,12 @@
 # `range-set`
 
-> Store a collection of contiguous `PrimInt` values as inclusive ranges using
-> generic `SmallVec` storage
+> Store collections of `PrimInt` values as inclusive ranges using generic
+> `SmallVec`-backed storage.
 
-This is useful when you want to process elements in order when they are not
-quite perfectly contiguous. Having a generic `smallvec::Array` parameter allows
+[Documentation](https://spearman.github.io/range-set/range_set/index.html)
+
+This is useful when you want to process elements in order but they are not
+perfectly contiguous. Having a generic `smallvec::Array` parameter allows
 choosing how many ranges will fit on the stack before spilling over onto the
 heap:
 
@@ -26,14 +28,44 @@ let v : Vec <u8> = s.iter().collect();
 assert_eq!(v, vec![0,1,2,3,4,5,6,7,8,9,10,11,12]);
 ```
 
+
 ## Usage
 
-TODO
+Inclusive ranges are an unstable Rust feature (as of `rustc` 1.24) so they must
+be enabled in the crate root:
 
-## Memory usage characteristics
+```rust
+#![feature(inclusive_range)]
+#![feature(inclusive_range_syntax)]
 
-The top-level `report` function will report byte sizes for various sizes of
-integers and array sizes. An program calling this function can be found in
+extern crate range_set;
+```
+
+```rust
+  use range_set::RangeSet;
+  use std::ops::RangeInclusive;
+  let mut s = RangeSet::<[RangeInclusive <u32>; 2]>::from_ranges (vec![
+    1..=100,
+    500..=1000
+  ].into()).unwrap();
+  s.insert (200);
+  s.insert (400..=499);
+  assert_eq!(s, RangeSet::from_ranges (vec![
+    1..=100,
+    200..=200,
+    400..=1000
+  ].into()).unwrap());
+```
+
+See `./examples/example.rs` and documentation for more examples.
+
+
+## Performance characteristics
+
+**Memory**
+
+The top-level `report` function will report byte sizes for various integers and
+array sizes. A program calling this function can be found in
 `./examples/example.rs`. Example output:
 
 ```
@@ -66,6 +98,12 @@ RangeSet report...
 ...RangeSet report
 ```
 
-As can be seen, using this for byte ranges is not a good idea since the minimum
-usage is 32 bytes which is enough to store the full range of 256 values as
-individual bits (32 * 8 = 256).
+As can be seen, using this type for `u8` (byte) ranges is not a good idea since
+the minimum usage is 32 bytes which is enough to store the full range of 256
+values as individual bits (32 * 8 = 256).
+
+
+**Time complexity**
+
+Since the ranges are stored in sorted order, binary search is used when
+inserting and removing values.
