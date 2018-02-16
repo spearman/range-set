@@ -1,6 +1,6 @@
 [package]
 name = "range-set"
-version = "0.0.0"
+version = "0.0.1"
 authors = ["Shane Pearman <spearman@github.com>"]
 license = "Apache-2.0"
 

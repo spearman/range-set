@@ -27,27 +27,27 @@ pub use range_compare::{
 /// # use smallvec::SmallVec;
 /// # use std::ops::RangeInclusive;
 /// # fn main() {
-/// let mut s = RangeSet::<[RangeInclusive <u8>; 1]>::from (0..=2);
+/// let mut s = RangeSet::<[RangeInclusive <u32>; 1]>::from (0..=2);
 /// println!("s: {:?}", s);
 /// assert!(!s.spilled());
 ///
 /// assert!(s.insert_range (8..=10).is_none());
 /// println!("s: {:?}", s);
 /// assert!(s.spilled());
-/// let v : Vec <u8> = s.iter().collect();
+/// let v : Vec <u32> = s.iter().collect();
 /// assert_eq!(v, vec![0,1,2,8,9,10]);
 ///
 /// assert_eq!(s.insert_range (3..=12), Some (RangeSet::from (8..=10)));
 /// println!("s: {:?}", s);
 /// assert!(!s.spilled());
-/// let v : Vec <u8> = s.iter().collect();
+/// let v : Vec <u32> = s.iter().collect();
 /// assert_eq!(v, vec![0,1,2,3,4,5,6,7,8,9,10,11,12]);
 /// # }
 /// ```
-#[derive(Debug,Eq,PartialEq)]
+#[derive(Clone,Debug,Eq,PartialEq)]
 pub struct RangeSet <A> where
   A       : smallvec::Array + Eq + std::fmt::Debug,
-  A::Item : Eq + std::fmt::Debug
+  A::Item : Clone + Eq + std::fmt::Debug
 {
   ranges  : smallvec::SmallVec <A>
 }
@@ -59,7 +59,7 @@ pub struct Iter <'a, A, T> where
 {
   range_set   : &'a RangeSet <A>,
   range_index : usize,
-  range       :std::ops::RangeInclusive <T>
+  range       : std::ops::RangeInclusive <T>
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -72,8 +72,8 @@ pub fn report() {
 
   println!("RangeSet report...");
 
-  println!("  size of RangeSet <[RangeInclusive <u8>; 1]>: {}",
-    std::mem::size_of::<RangeSet <[RangeInclusive <u8>; 1]>>());
+  println!("  size of RangeSet <[RangeInclusive <u32>; 1]>: {}",
+    std::mem::size_of::<RangeSet <[RangeInclusive <u32>; 1]>>());
   println!("  size of RangeSet <[RangeInclusive <u16>; 1]>: {}",
     std::mem::size_of::<RangeSet <[RangeInclusive <u16>; 1]>>());
   println!("  size of RangeSet <[RangeInclusive <u32>; 1]>: {}",
@@ -83,8 +83,8 @@ pub fn report() {
   println!("  size of RangeSet <[RangeInclusive <usize>; 1]>: {}",
     std::mem::size_of::<RangeSet <[RangeInclusive <usize>; 1]>>());
 
-  println!("  size of RangeSet <[RangeInclusive <u8>; 2]>: {}",
-    std::mem::size_of::<RangeSet <[RangeInclusive <u8>; 2]>>());
+  println!("  size of RangeSet <[RangeInclusive <u32>; 2]>: {}",
+    std::mem::size_of::<RangeSet <[RangeInclusive <u32>; 2]>>());
   println!("  size of RangeSet <[RangeInclusive <u16>; 2]>: {}",
     std::mem::size_of::<RangeSet <[RangeInclusive <u16>; 2]>>());
   println!("  size of RangeSet <[RangeInclusive <u32>; 2]>: {}",
@@ -94,8 +94,8 @@ pub fn report() {
   println!("  size of RangeSet <[RangeInclusive <usize>; 2]>: {}",
     std::mem::size_of::<RangeSet <[RangeInclusive <usize>; 2]>>());
 
-  println!("  size of RangeSet <[RangeInclusive <u8>; 4]>: {}",
-    std::mem::size_of::<RangeSet <[RangeInclusive <u8>; 4]>>());
+  println!("  size of RangeSet <[RangeInclusive <u32>; 4]>: {}",
+    std::mem::size_of::<RangeSet <[RangeInclusive <u32>; 4]>>());
   println!("  size of RangeSet <[RangeInclusive <u16>; 4]>: {}",
     std::mem::size_of::<RangeSet <[RangeInclusive <u16>; 4]>>());
   println!("  size of RangeSet <[RangeInclusive <u32>; 4]>: {}",
@@ -105,8 +105,8 @@ pub fn report() {
   println!("  size of RangeSet <[RangeInclusive <usize>; 4]>: {}",
     std::mem::size_of::<RangeSet <[RangeInclusive <usize>; 4]>>());
 
-  println!("  size of RangeSet <[RangeInclusive <u8>; 8]>: {}",
-    std::mem::size_of::<RangeSet <[RangeInclusive <u8>; 8]>>());
+  println!("  size of RangeSet <[RangeInclusive <u32>; 8]>: {}",
+    std::mem::size_of::<RangeSet <[RangeInclusive <u32>; 8]>>());
   println!("  size of RangeSet <[RangeInclusive <u16>; 8]>: {}",
     std::mem::size_of::<RangeSet <[RangeInclusive <u16>; 8]>>());
   println!("  size of RangeSet <[RangeInclusive <u32>; 8]>: {}",
@@ -116,8 +116,8 @@ pub fn report() {
   println!("  size of RangeSet <[RangeInclusive <usize>; 8]>: {}",
     std::mem::size_of::<RangeSet <[RangeInclusive <usize>; 8]>>());
 
-  println!("  size of RangeSet <[RangeInclusive <u8>; 16]>: {}",
-    std::mem::size_of::<RangeSet <[RangeInclusive <u8>; 16]>>());
+  println!("  size of RangeSet <[RangeInclusive <u32>; 16]>: {}",
+    std::mem::size_of::<RangeSet <[RangeInclusive <u32>; 16]>>());
   println!("  size of RangeSet <[RangeInclusive <u16>; 16]>: {}",
     std::mem::size_of::<RangeSet <[RangeInclusive <u16>; 16]>>());
   println!("  size of RangeSet <[RangeInclusive <u32>; 16]>: {}",
@@ -172,13 +172,11 @@ impl <A, T> RangeSet <A> where
   /// # #![feature(inclusive_range_syntax)]
   /// # use range_set::RangeSet;
   /// # use std::ops::RangeInclusive;
-  /// let mut s = RangeSet::<[RangeInclusive <u8>; 2]>::from (0..=5);
+  /// let mut s = RangeSet::<[RangeInclusive <u32>; 2]>::from (0..=5);
   /// assert_eq!(s.insert_range ( 3..=10), Some (RangeSet::from (3..=5)));
   /// assert_eq!(s.insert_range (20..=30), None);
   /// ```
-  pub fn insert_range (&mut self, range : A::Item)
-    -> Option <Self>
-  {
+  pub fn insert_range (&mut self, range : A::Item) -> Option <Self> {
     if is_empty (&range) {       // empty range
       return None
     }
@@ -186,8 +184,8 @@ impl <A, T> RangeSet <A> where
       self.ranges.push (range);
       return None
     }
-    let before = Self::binary_search_before (self, &range);
-    let after  = Self::binary_search_after  (self, &range);
+    let before = Self::binary_search_before_proper (self, &range);
+    let after  = Self::binary_search_after_proper  (self, &range);
     match (before, after) {
       // no existing ranges are properly greater than or less than the range:
       // this means that both the first range and the last range are either
@@ -195,14 +193,7 @@ impl <A, T> RangeSet <A> where
       // range set will be fused to a single range containing the min and max
       // of the intersection of the given range and the existing range set
       (None, None) => {
-        let mut isect = RangeSet::new();
-        for r in self.ranges.iter() {
-          let rsect = intersection (&range, &r);
-          if !is_empty (&rsect) {
-            isect.ranges.push (rsect);
-          }
-          debug_assert!(isect.is_valid());
-        }
+        let isect = self.range_intersection (&range, 0..self.ranges.len());
         self.ranges = {
           let mut v = smallvec::SmallVec::new();
           v.push (
@@ -222,15 +213,8 @@ impl <A, T> RangeSet <A> where
           self.ranges.push (range);
           None
         } else {  // otherwise merge into last range
-          let mut isect = RangeSet::new();
-          for i in before+1..self.ranges.len() {
-            let r     = &self.ranges[i];
-            let rsect = intersection (&range, &r);
-            if !is_empty (&rsect) {
-              isect.ranges.push (rsect);
-            }
-            debug_assert!(isect.is_valid());
-          }
+          let isect
+            = self.range_intersection (&range, before+1..self.ranges.len());
           self.ranges[before+1] =
             std::cmp::min (range.start, self.ranges[before+1].start)..=
             std::cmp::max (range.end, self.ranges[self.ranges.len()-1].end);
@@ -248,15 +232,7 @@ impl <A, T> RangeSet <A> where
           self.ranges.insert (0, range);
           None
         } else {        // otherwise merge into first range
-          let mut isect = RangeSet::new();
-          for i in 0..after {
-            let r     = &self.ranges[i];
-            let rsect = intersection (&range, &r);
-            if !is_empty (&rsect) {
-              isect.ranges.push (rsect);
-            }
-            debug_assert!(isect.is_valid());
-          }
+          let isect = self.range_intersection (&range, 0..after);
           self.ranges[0] =
             std::cmp::min (range.start, self.ranges[0].start)..=
             std::cmp::max (range.end, self.ranges[after-1].end);
@@ -279,15 +255,7 @@ impl <A, T> RangeSet <A> where
           self.ranges.insert (before+1, range);
           None
         } else {                // otherwise merge with existing ranges
-          let mut isect = RangeSet::new();
-          for i in before+1..after {
-            let r     = &self.ranges[i];
-            let rsect = intersection (&range, &r);
-            if !is_empty (&rsect) {
-              isect.ranges.push (rsect);
-            }
-            debug_assert!(isect.is_valid());
-          }
+          let isect = self.range_intersection (&range, before+1..after);
           self.ranges[before+1] =
             std::cmp::min (range.start, self.ranges[before+1].start)..=
             std::cmp::max (range.end, self.ranges[after-1].end);
@@ -309,11 +277,84 @@ impl <A, T> RangeSet <A> where
     }
   } // end fn insert_range
 
-  /// Returns the removed elements if they were present
-  pub fn remove_range (&mut self, _range : std::ops::RangeInclusive <T>)
-    -> Option <Self>
-  {
-    unimplemented!()
+  /// Removes and returns the intersected elements, if there were any.
+  ///
+  /// ```
+  /// # #![feature(inclusive_range)]
+  /// # #![feature(inclusive_range_syntax)]
+  /// # use range_set::RangeSet;
+  /// # use std::ops::RangeInclusive;
+  /// let mut s = RangeSet::<[RangeInclusive <u32>; 2]>::from (0..=5);
+  /// assert_eq!(s.remove_range (3..=3), Some (RangeSet::from (3..=3)));
+  /// assert_eq!(s, RangeSet::from_ranges (vec![0..=2, 4..=5].into()).unwrap());
+  /// assert_eq!(s.remove_range (0..=10), Some (
+  ///   RangeSet::from_ranges (vec![0..=2, 4..=5].into()).unwrap()));
+  /// assert!(s.is_empty());
+  /// ```
+  pub fn remove_range (&mut self, range : A::Item) -> Option <Self> {
+    if self.ranges.is_empty() || is_empty (&range) {  // empty
+      return None
+    }
+    let before = Self::binary_search_before (self, &range);
+    let after  = Self::binary_search_after  (self, &range);
+    // non-inclusive range of ranges to check for intersection
+    let (isect_first, isect_last) = match (before, after) {
+      (None, None)                  => (0, self.ranges.len()),
+      (Some (before), None)         => (before+1, self.ranges.len()),
+      (None, Some (after))          => (0, after),
+      (Some (before), Some (after)) => (before+1, after)
+    };
+    let isect = self.range_intersection (&range, isect_first..isect_last);
+    if isect.is_empty() {
+      return None
+    }
+
+    // a split range is only possible if there was a single intersection
+    if isect_last - isect_first == 1 {
+      let single_range = self.ranges[isect_first].clone();
+      if single_range.start < range.start && range.end < single_range.end {
+        let left  = single_range.start..=range.start - T::one();
+        let right = range.end + T::one()..=single_range.end;
+        self.ranges[isect_first] = right;
+        self.ranges.insert (isect_first, left);
+        return Some (isect)
+      }
+    }
+
+    // one or more range intersected: the range of intersected ranges will be
+    // reduced to zero, one, or two ranges
+    let first = self.ranges[isect_first].clone();
+    let last  = self.ranges[isect_last-1].clone();
+
+    let (remove_first, remove_last) = if
+    // all intersected ranges removed: shift higher ranges down
+      range.start <= first.start && last.end <= range.end
+    {
+      (isect_first, isect_last)
+    // first intersected range remains but is shortened
+    } else if first.start < range.start && last.end <= range.end {
+      self.ranges[isect_first].end = range.start - T::one();
+      (isect_first+1, isect_last)
+    // last intersected range remains but is shortened
+    } else if range.start <= first.start && range.end < last.end {
+      self.ranges[isect_last-1].start = range.end + T::one();
+      (isect_first, isect_last-1)
+    // both first and last range remain and are shortened
+    } else {
+      debug_assert!(first.start < range.start && range.end < last.end);
+      self.ranges[isect_first].end    = range.start - T::one();
+      self.ranges[isect_last-1].start = range.end   + T::one();
+      (isect_first+1, isect_last-1)
+    };
+    // remove ranges, shift later ranges and truncate
+    for (i, index) in (remove_last..self.ranges.len()).enumerate() {
+      self.ranges[remove_first+i] = self.ranges[index].clone();
+    }
+    let new_len = self.ranges.len() - (remove_last - remove_first);
+    self.ranges.truncate (new_len);
+
+    debug_assert!(self.is_valid());
+    Some (isect)
   }
 
   pub fn iter (&self) -> Iter <A, T> {
@@ -336,7 +377,7 @@ impl <A, T> RangeSet <A> where
   /// # use smallvec::SmallVec;
   /// # use range_set::*;
   /// # fn main() {
-  /// let mut v = SmallVec::<[RangeInclusive <u8>; 2]>::new();
+  /// let mut v = SmallVec::<[RangeInclusive <u32>; 2]>::new();
   /// assert!(RangeSet::valid_range_vec (&v));
   /// v.push (0..=3);
   /// assert!(RangeSet::valid_range_vec (&v));
@@ -371,10 +412,61 @@ impl <A, T> RangeSet <A> where
   }
 
   /// Insert helper function: search for the last range in self that is
+  /// `LessThanAdjacent` or `LessThanProper` when compared with the given range
+  fn binary_search_before (&self, range : &A::Item) -> Option <usize> {
+    let mut before = 0;
+    let mut after  = self.ranges.len();
+    let mut found  = false;
+    while before != after {
+      let i = before + (after - before) / 2;
+      let last = before;
+      if self.ranges[i].end+T::one() <= range.start {
+        found  = true;
+        before = i;
+        if before == last {
+          break
+        }
+      } else {
+        after = i
+      }
+    }
+    if found {
+      Some (before)
+    } else {
+      None
+    }
+  }
+
+  /// Insert helper function: search for the first range in self that is
+  /// `GreaterThanAdjacent` or `GreaterThanProper` when compared with the given
+  /// range
+  fn binary_search_after (&self, range : &A::Item) -> Option <usize> {
+    let mut before = 0;
+    let mut after  = self.ranges.len();
+    let mut found  = false;
+    while before != after {
+      let i    = before + (after - before) / 2;
+      let last = before;
+      if range.end+T::one() <= self.ranges[i].start {
+        found = true;
+        after = i;
+      } else {
+        before = i;
+        if before == last {
+          break
+        }
+      }
+    }
+    if found {
+      Some (after)
+    } else {
+      None
+    }
+  }
+
+  /// Insert helper function: search for the last range in self that is
   /// `LessThanProper` when compared with the given range
-  fn binary_search_before (&self, range : &std::ops::RangeInclusive <T>)
-    -> Option <usize>
-  {
+  fn binary_search_before_proper (&self, range : &A::Item) -> Option <usize> {
     let mut before = 0;
     let mut after  = self.ranges.len();
     let mut found  = false;
@@ -400,9 +492,7 @@ impl <A, T> RangeSet <A> where
 
   /// Insert helper function: search for the first range in self that is
   /// `GreaterThanProper` when compared with the given range
-  fn binary_search_after (&self, range : &std::ops::RangeInclusive <T>)
-    -> Option <usize>
-  {
+  fn binary_search_after_proper (&self, range : &A::Item) -> Option <usize> {
     let mut before = 0;
     let mut after  = self.ranges.len();
     let mut found  = false;
@@ -424,6 +514,23 @@ impl <A, T> RangeSet <A> where
     } else {
       None
     }
+  }
+
+  /// Return the intersection of a given range with the given range of ranges in
+  /// self
+  fn range_intersection (&self,
+    range : &A::Item, range_range : std::ops::Range <usize>
+  ) -> Self {
+    let mut isect = RangeSet::new();
+    for i in range_range {
+      let r     = &self.ranges[i];
+      let rsect = intersection (&range, &r);
+      if !is_empty (&rsect) {
+        isect.ranges.push (rsect);
+      }
+    }
+    debug_assert!(isect.is_valid());
+    isect
   }
 
   /// Internal validity check: all ranges are non-empty, disjoint proper with
