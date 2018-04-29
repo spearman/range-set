@@ -75,7 +75,7 @@ pub struct Iter <'a, A, T> where
 pub fn report_sizes() {
   use std::ops::RangeInclusive;
 
-  println!("RangeSet report...");
+  println!("RangeSet report sizes...");
 
   println!("  size of RangeSet <[RangeInclusive <u32>; 1]>: {}",
     std::mem::size_of::<RangeSet <[RangeInclusive <u32>; 1]>>());
@@ -132,7 +132,7 @@ pub fn report_sizes() {
   println!("  size of RangeSet <[RangeInclusive <usize>; 16]>: {}",
     std::mem::size_of::<RangeSet <[RangeInclusive <usize>; 16]>>());
 
-  println!("...RangeSet report");
+  println!("...RangeSet report sizes");
 }
 
 ///////////////////////////////////////////////////////////////////////////////
