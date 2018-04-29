@@ -3,6 +3,9 @@ name = "range-set"
 version = "0.0.3"
 authors = ["Shane Pearman <spearman@github.com>"]
 license = "Apache-2.0"
+description = "Smallvec-backed containers of sorted integer ranges"
+repository = "https://github.com/spearman/range-set"
+readme = "README.md"
 
 [dependencies]
 num-traits = "0.2.*"
