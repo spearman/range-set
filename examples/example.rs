@@ -1,12 +1,11 @@
 #![feature(inclusive_range)]
-#![feature(inclusive_range_syntax)]
 extern crate range_set;
 
 use range_set::RangeSet;
 use std::ops::RangeInclusive;
 
 fn main() {
-  range_set::report();  // report some sizes of various range set types
+  range_set::report_sizes();  // report some sizes of various range set types
 
   let mut s = RangeSet::<[RangeInclusive <u8>; 1]>::from (0..=2);
   println!("s: {:?}", s);

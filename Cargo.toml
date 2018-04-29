@@ -1,9 +1,9 @@
 [package]
 name = "range-set"
-version = "0.0.2"
+version = "0.0.3"
 authors = ["Shane Pearman <spearman@github.com>"]
 license = "Apache-2.0"
 
 [dependencies]
-num = "0.1.*"
+num-traits = "0.2.*"
 smallvec = "0.6.*"

@@ -5,38 +5,37 @@
 
 [Documentation](https://spearman.github.io/range-set/range_set/index.html)
 
-This is useful when you want to process elements in order but they are not
-perfectly contiguous. Having a generic `smallvec::Array` parameter allows
-choosing how many ranges will fit on the stack before spilling over onto the
-heap:
+A generic `smallvec::Array` parameter allows choosing how many ranges will fit
+on the stack before spilling over onto the heap:
 
 ```rust
-let mut s = RangeSet::<[RangeInclusive <u8>; 1]>::from (0..=2);
+let mut s = RangeSet::<[RangeInclusive <u32>; 1]>::from (0..=2);
 println!("s: {:?}", s);
 assert!(!s.spilled());
 
 assert!(s.insert_range (8..=10).is_none());
 println!("s: {:?}", s);
 assert!(s.spilled());
-let v : Vec <u8> = s.iter().collect();
+let v : Vec <u32> = s.iter().collect();
 assert_eq!(v, vec![0,1,2,8,9,10]);
 
 assert_eq!(s.insert_range (3..=12), Some (RangeSet::from (8..=10)));
 println!("s: {:?}", s);
 assert!(!s.spilled());
-let v : Vec <u8> = s.iter().collect();
+let v : Vec <u32> = s.iter().collect();
 assert_eq!(v, vec![0,1,2,3,4,5,6,7,8,9,10,11,12]);
 ```
 
+This is most useful with large blocks of not-quite contiguous data that should
+be traversed in-order.
 
 ## Usage
 
-Inclusive ranges are an unstable Rust feature (as of `rustc` 1.24) so they must
+Inclusive ranges are an unstable Rust feature (as of `rustc` 1.26) so they must
 be enabled in the crate root:
 
 ```rust
 #![feature(inclusive_range)]
-#![feature(inclusive_range_syntax)]
 
 extern crate range_set;
 ```
@@ -59,17 +58,14 @@ extern crate range_set;
 
 See `./examples/example.rs` and documentation for more examples.
 
+## Memory sizes
 
-## Performance characteristics
-
-**Memory**
-
-The top-level `report` function will report byte sizes for various integers and
-array sizes. A program calling this function can be found in
-`./examples/example.rs`. Example output:
+The top-level `report_sizes` function will report byte sizes for various
+combinations of integer types and array sizes. A program calling this function
+can be found in `./examples/example.rs`. Example output:
 
 ```
-RangeSet report...
+RangeSet report sizes...
   size of RangeSet <[RangeInclusive <u8>; 1]>: 32
   size of RangeSet <[RangeInclusive <u16>; 1]>: 32
   size of RangeSet <[RangeInclusive <u32>; 1]>: 32
@@ -95,15 +91,14 @@ RangeSet report...
   size of RangeSet <[RangeInclusive <u32>; 16]>: 144
   size of RangeSet <[RangeInclusive <u64>; 16]>: 272
   size of RangeSet <[RangeInclusive <usize>; 16]>: 272
-...RangeSet report
+...RangeSet report sizes
 ```
 
-As can be seen, using this type for `u8` (byte) ranges is not a good idea since
-the minimum usage is 32 bytes which is enough to store the full range of 256
-values as individual bits (32 * 8 = 256).
+Storing `u8` (byte) ranges is not a good idea since the minimum size (to store
+a single range on the stack) is 32 bytes which is enough to store the full
+range of 256 values as individual bits (32 * 8 = 256).
 
-
-**Time complexity**
+## Operations
 
 Since the ranges are stored in sorted order, binary search is used when
 inserting and removing values.

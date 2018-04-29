@@ -1,6 +1,8 @@
 //! Type and functions for comparing inclusive ranges
 
-use ::{std, num};
+use ::{std};
+
+use num_traits::PrimInt;
 
 ///////////////////////////////////////////////////////////////////////////////
 //  enums                                                                    //
@@ -71,7 +73,7 @@ pub enum RangeIntersect {
 ///   range_compare (&(1..=0), &(1..=0)),
 ///   RangeCompare::Disjoint (RangeDisjoint::EmptyBoth));
 /// ```
-pub fn range_compare <T : num::PrimInt> (
+pub fn range_compare <T : PrimInt> (
   left : &std::ops::RangeInclusive <T>, right : &std::ops::RangeInclusive <T>
 ) -> RangeCompare {
   if let Some (disjoint) = RangeDisjoint::compare (left, right) {
@@ -94,7 +96,7 @@ pub fn range_compare <T : num::PrimInt> (
 ///   2..=3);
 /// assert!(is_empty (&intersection (&(0..=2), &(3..=5))));
 /// ```
-pub fn intersection <T : num::PrimInt> (
+pub fn intersection <T : PrimInt> (
   left : &std::ops::RangeInclusive <T>, right : &std::ops::RangeInclusive <T>
 ) -> std::ops::RangeInclusive <T> {
   if let None = RangeDisjoint::compare (left, right) {
@@ -112,7 +114,7 @@ pub fn intersection <T : num::PrimInt> (
 /// assert!(is_empty (&(1..=0)));
 /// ```
 #[inline]
-pub fn is_empty <T : num::PrimInt>
+pub fn is_empty <T : PrimInt>
   (range : &std::ops::RangeInclusive <T>) -> bool
 {
   range.end < range.start
@@ -164,7 +166,7 @@ impl RangeDisjoint {
   ///   RangeDisjoint::compare (&(3..=5), &(0..=2)),
   ///   Some (RangeDisjoint::GreaterThanAdjacent));
   /// ```
-  pub fn compare <T : num::PrimInt> (
+  pub fn compare <T : PrimInt> (
     left : &std::ops::RangeInclusive <T>, right : &std::ops::RangeInclusive <T>
   ) -> Option <Self> {
     match (is_empty (left), is_empty (right)) {
@@ -231,7 +233,7 @@ impl RangeIntersect {
   ///   RangeIntersect::compare (&(3..=5), &(0..=3)),
   ///   Some (RangeIntersect::OverlapsRight));
   /// ```
-  pub fn compare <T : num::PrimInt> (
+  pub fn compare <T : PrimInt> (
     left : &std::ops::RangeInclusive <T>, right : &std::ops::RangeInclusive <T>
   ) -> Option <Self> {
     match (is_empty (left), is_empty (right)) {

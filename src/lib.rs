@@ -1,8 +1,10 @@
+//! `RangeSet` container type
+
 #![feature(inclusive_range)]
-#![feature(inclusive_range_syntax)]
+#![feature(inclusive_range_fields)]
 #![feature(exact_size_is_empty)]
 
-extern crate num;
+extern crate num_traits;
 extern crate smallvec;
 
 pub mod range_compare;
@@ -12,16 +14,16 @@ pub use range_compare::{
   range_compare, intersection, is_empty
 };
 
+use num_traits::PrimInt;
+
 ///////////////////////////////////////////////////////////////////////////////
 //  structs                                                                  //
 ///////////////////////////////////////////////////////////////////////////////
 
-/// A set of primitive integers represented as a sorted list of inclusive
-/// ranges.
+/// A set of primitive integers represented as a sorted list of disjoint,
+/// inclusive ranges.
 ///
 /// ```
-/// # #![feature(inclusive_range)]
-/// # #![feature(inclusive_range_syntax)]
 /// # extern crate smallvec;
 /// # extern crate range_set;
 /// # use range_set::RangeSet;
@@ -58,7 +60,7 @@ pub struct RangeSet <A> where
 pub struct Iter <'a, A, T> where
   A : 'a + smallvec::Array <Item=std::ops::RangeInclusive <T>>
     + Eq + std::fmt::Debug,
-  T : 'a + num::PrimInt + std::fmt::Debug
+  T : 'a + PrimInt + std::fmt::Debug
 {
   range_set   : &'a RangeSet <A>,
   range_index : usize,
@@ -70,7 +72,7 @@ pub struct Iter <'a, A, T> where
 ///////////////////////////////////////////////////////////////////////////////
 
 /// Report some sizes of various range set types
-pub fn report() {
+pub fn report_sizes() {
   use std::ops::RangeInclusive;
 
   println!("RangeSet report...");
@@ -145,7 +147,7 @@ pub fn report() {
 impl <A, T> RangeSet <A> where
   A : smallvec::Array <Item=std::ops::RangeInclusive <T>>
     + Eq + std::fmt::Debug,
-  T : num::PrimInt + std::fmt::Debug
+  T : PrimInt + std::fmt::Debug
 {
   /// New empty range set
   #[inline]
@@ -197,8 +199,6 @@ impl <A, T> RangeSet <A> where
   /// or else false if it was already present
   ///
   /// ```
-  /// # #![feature(inclusive_range)]
-  /// # #![feature(inclusive_range_syntax)]
   /// # use range_set::RangeSet;
   /// # use std::ops::RangeInclusive;
   /// let mut s = RangeSet::<[RangeInclusive <u32>; 2]>::new();
@@ -225,8 +225,6 @@ impl <A, T> RangeSet <A> where
   /// or else false if it was not present
   ///
   /// ```
-  /// # #![feature(inclusive_range)]
-  /// # #![feature(inclusive_range_syntax)]
   /// # use range_set::RangeSet;
   /// # use std::ops::RangeInclusive;
   /// let mut s = RangeSet::<[RangeInclusive <u32>; 2]>::from (0..=5);
@@ -257,8 +255,6 @@ impl <A, T> RangeSet <A> where
   /// with the curret range set.
   ///
   /// ```
-  /// # #![feature(inclusive_range)]
-  /// # #![feature(inclusive_range_syntax)]
   /// # use range_set::RangeSet;
   /// # use std::ops::RangeInclusive;
   /// let mut s = RangeSet::<[RangeInclusive <u32>; 2]>::from (0..=5);
@@ -367,8 +363,6 @@ impl <A, T> RangeSet <A> where
   /// Removes and returns the intersected elements, if there were any.
   ///
   /// ```
-  /// # #![feature(inclusive_range)]
-  /// # #![feature(inclusive_range_syntax)]
   /// # use range_set::RangeSet;
   /// # use std::ops::RangeInclusive;
   /// let mut s = RangeSet::<[RangeInclusive <u32>; 2]>::from (0..=5);
@@ -456,8 +450,6 @@ impl <A, T> RangeSet <A> where
   /// ranges must be properly disjoint (not adjacent) and sorted.
   ///
   /// ```
-  /// # #![feature(inclusive_range)]
-  /// # #![feature(inclusive_range_syntax)]
   /// # extern crate smallvec;
   /// # extern crate range_set;
   /// # use std::ops::RangeInclusive;
@@ -640,7 +632,7 @@ impl <A, T> RangeSet <A> where
 impl <A, T> From <std::ops::RangeInclusive <T>> for RangeSet <A> where
   A : smallvec::Array <Item=std::ops::RangeInclusive <T>>
     + Eq + std::fmt::Debug,
-  T : num::PrimInt + std::fmt::Debug
+  T : PrimInt + std::fmt::Debug
 {
   fn from (range : std::ops::RangeInclusive <T>) -> Self {
     let ranges = {
@@ -655,7 +647,7 @@ impl <A, T> From <std::ops::RangeInclusive <T>> for RangeSet <A> where
 impl <'a, A, T> Iterator for Iter <'a, A, T> where
   A : smallvec::Array <Item=std::ops::RangeInclusive <T>>
     + Eq + std::fmt::Debug,
-  T : num::PrimInt + std::fmt::Debug,
+  T : PrimInt + std::fmt::Debug,
   std::ops::RangeInclusive <T> : Clone + Iterator <Item=T>
 {
   type Item = T;
