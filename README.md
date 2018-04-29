@@ -58,7 +58,7 @@ extern crate range_set;
 
 See `./examples/example.rs` and documentation for more examples.
 
-## Memory sizes
+## On-stack sizes
 
 The top-level `report_sizes` function will report byte sizes for various
 combinations of integer types and array sizes. A program calling this function
