@@ -3,7 +3,7 @@
 > Store collections of `PrimInt` values as inclusive ranges using generic
 > `SmallVec`-backed storage.
 
-[Documentation](https://spearman.github.io/range-set/range_set/index.html)
+[Documentation](https://docs.rs/range-set)
 
 A generic `smallvec::Array` parameter allows choosing how many ranges will fit
 on the stack before spilling over onto the heap:
