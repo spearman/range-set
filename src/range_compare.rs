@@ -64,7 +64,6 @@ pub enum RangeIntersect {
 /// Compare two inclusive ranges.
 ///
 /// ```
-/// # #![feature(inclusive_range_syntax)]
 /// # use range_set::*;
 /// assert_eq!(
 ///   range_compare (&(0..=5), &(0..=5)),
@@ -89,7 +88,6 @@ pub fn range_compare <T : PrimInt> (
 /// if they are disjoint.
 ///
 /// ```
-/// # #![feature(inclusive_range_syntax)]
 /// # use range_set::*;
 /// assert_eq!(
 ///   intersection (&(0..=3), &(2..=5)),
@@ -100,7 +98,7 @@ pub fn intersection <T : PrimInt> (
   left : &std::ops::RangeInclusive <T>, right : &std::ops::RangeInclusive <T>
 ) -> std::ops::RangeInclusive <T> {
   if let None = RangeDisjoint::compare (left, right) {
-    std::cmp::max (left.start, right.start)..=std::cmp::min (left.end, right.end)
+    std::cmp::max (*left.start(), *right.start())..=std::cmp::min (*left.end(), *right.end())
   } else {
     T::one()..=T::zero()
   }
@@ -109,7 +107,6 @@ pub fn intersection <T : PrimInt> (
 /// TODO: replace with standard library is_empty method when PR #48087 is merged
 ///
 /// ```
-/// # #![feature(inclusive_range_syntax)]
 /// # use range_set::*;
 /// assert!(is_empty (&(1..=0)));
 /// ```
@@ -117,7 +114,7 @@ pub fn intersection <T : PrimInt> (
 pub fn is_empty <T : PrimInt>
   (range : &std::ops::RangeInclusive <T>) -> bool
 {
-  range.end < range.start
+  range.end() < range.start()
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -141,7 +138,6 @@ impl RangeDisjoint {
   /// intersect.
   ///
   /// ```
-  /// # #![feature(inclusive_range_syntax)]
   /// # use range_set::*;
   /// assert_eq!(RangeDisjoint::compare (&(0..=5), &(0..=5)), None);
   /// assert_eq!(
@@ -173,20 +169,20 @@ impl RangeDisjoint {
       (true, true)   => Some (RangeDisjoint::EmptyBoth),
       (true, false)  => Some (RangeDisjoint::EmptyLhs),
       (false, true)  => Some (RangeDisjoint::EmptyRhs),
-      (false, false) => if right.start <= left.end && left.start <= right.end
-        || left.start <= right.end && right.start <= left.end
+      (false, false) => if right.start() <= left.end() && left.start() <= right.end()
+        || left.start() <= right.end() && right.start() <= left.end()
       {
         None  // intersection
       } else {
         Some (
-          if left.end < right.start {
-            match right.start - left.end {
+          if left.end() < right.start() {
+            match *right.start() - *left.end() {
               x if x == T::one() => RangeDisjoint::LessThanAdjacent,
               _                  => RangeDisjoint::LessThanProper
             }
           } else {
-            debug_assert!(right.end < left.start);
-            match left.start - right.end {
+            debug_assert!(right.end() < left.start());
+            match *left.start() - *right.end() {
               x if x == T::one() => RangeDisjoint::GreaterThanAdjacent,
               _                  => RangeDisjoint::GreaterThanProper
             }
@@ -202,7 +198,6 @@ impl RangeIntersect {
   /// ranges are disjoint.
   ///
   /// ```
-  /// # #![feature(inclusive_range_syntax)]
   /// # use range_set::*;
   /// assert_eq!(RangeIntersect::compare (&(0..=1), &(4..=5)), None);
   /// assert_eq!(
@@ -238,24 +233,24 @@ impl RangeIntersect {
   ) -> Option <Self> {
     match (is_empty (left), is_empty (right)) {
       (true, true) | (true, false) | (false, true) => None,
-      (false, false) => if left.end < right.start || right.end < left.start {
+      (false, false) => if left.end() < right.start() || right.end() < left.start() {
         None  // disjoint
       } else {
         Some (if left == right {
           RangeIntersect::EqualTo
         } else {
-          match left.start.cmp (&right.start) {
-            std::cmp::Ordering::Less => match left.end.cmp (&right.end) {
+          match left.start().cmp (&right.start()) {
+            std::cmp::Ordering::Less => match left.end().cmp (&right.end()) {
               std::cmp::Ordering::Less    => RangeIntersect::OverlapsLeft,
               std::cmp::Ordering::Equal   => RangeIntersect::ContainsLast,
               std::cmp::Ordering::Greater => RangeIntersect::ContainsProper
             }
-            std::cmp::Ordering::Equal => match left.end.cmp (&right.end) {
+            std::cmp::Ordering::Equal => match left.end().cmp (&right.end()) {
               std::cmp::Ordering::Less    => RangeIntersect::ContainedByFirst,
               std::cmp::Ordering::Equal   => unreachable!(),
               std::cmp::Ordering::Greater => RangeIntersect::ContainsFirst
             }
-            std::cmp::Ordering::Greater => match left.end.cmp (&right.end) {
+            std::cmp::Ordering::Greater => match left.end().cmp (&right.end()) {
               std::cmp::Ordering::Less    => RangeIntersect::ContainedByProper,
               std::cmp::Ordering::Equal   => RangeIntersect::ContainedByLast,
               std::cmp::Ordering::Greater => RangeIntersect::OverlapsRight
