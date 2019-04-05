@@ -1,9 +1,5 @@
 //! `RangeSet` container type
 
-#![feature(inclusive_range)]
-#![feature(inclusive_range_fields)]
-#![feature(exact_size_is_empty)]
-
 extern crate num_traits;
 extern crate smallvec;
 
@@ -280,8 +276,8 @@ impl <A, T> RangeSet <A> where
       (None, None) => {
         let isect = self.range_intersection (&range, 0..self.ranges.len());
         let new_range =
-          std::cmp::min (range.start, self.ranges[0].start)..=
-          std::cmp::max (range.end,   self.ranges[self.ranges.len()-1].end);
+          std::cmp::min (*range.start(), *self.ranges[0].start())..=
+          std::cmp::max (*range.end(),   *self.ranges[self.ranges.len()-1].end());
         self.ranges.clear();
         self.ranges.push (new_range);
         if !isect.is_empty() {
@@ -299,8 +295,8 @@ impl <A, T> RangeSet <A> where
           let isect
             = self.range_intersection (&range, before+1..self.ranges.len());
           self.ranges[before+1] =
-            std::cmp::min (range.start, self.ranges[before+1].start)..=
-            std::cmp::max (range.end, self.ranges[self.ranges.len()-1].end);
+            std::cmp::min (*range.start(), *self.ranges[before+1].start())..=
+            std::cmp::max (*range.end(), *self.ranges[self.ranges.len()-1].end());
           self.ranges.truncate (before+2);
           if !isect.is_empty() {
             Some (isect)
@@ -317,8 +313,8 @@ impl <A, T> RangeSet <A> where
         } else {        // otherwise merge into first range
           let isect = self.range_intersection (&range, 0..after);
           self.ranges[0] =
-            std::cmp::min (range.start, self.ranges[0].start)..=
-            std::cmp::max (range.end, self.ranges[after-1].end);
+            std::cmp::min (*range.start(), *self.ranges[0].start())..=
+            std::cmp::max (*range.end(), *self.ranges[after-1].end());
           for i in 0..after {
             self.ranges[i+1] = self.ranges[after + i].clone();
           }
@@ -340,8 +336,8 @@ impl <A, T> RangeSet <A> where
         } else {                // otherwise merge with existing ranges
           let isect = self.range_intersection (&range, before+1..after);
           self.ranges[before+1] =
-            std::cmp::min (range.start, self.ranges[before+1].start)..=
-            std::cmp::max (range.end, self.ranges[after-1].end);
+            std::cmp::min (*range.start(), *self.ranges[before+1].start())..=
+            std::cmp::max (*range.end(), *self.ranges[after-1].end());
           // if there are more than one ranges between we must shift and truncate
           if 1 < after - before - 1 {
             for i in 0..(after-before-1) {
@@ -393,9 +389,9 @@ impl <A, T> RangeSet <A> where
     // a split range is only possible if there was a single intersection
     if isect_last - isect_first == 1 {
       let single_range = self.ranges[isect_first].clone();
-      if single_range.start < range.start && range.end < single_range.end {
-        let left  = single_range.start..=range.start - T::one();
-        let right = range.end + T::one()..=single_range.end;
+      if single_range.start() < range.start() && range.end() < single_range.end() {
+        let left  = *single_range.start()..=*range.start() - T::one();
+        let right = *range.end() + T::one()..=*single_range.end();
         self.ranges[isect_first] = right;
         self.ranges.insert (isect_first, left);
         return Some (isect)
@@ -409,22 +405,22 @@ impl <A, T> RangeSet <A> where
 
     let (remove_first, remove_last) = if
     // all intersected ranges removed: shift higher ranges down
-      range.start <= first.start && last.end <= range.end
+      range.start() <= first.start() && last.end() <= range.end()
     {
       (isect_first, isect_last)
     // first intersected range remains but is shortened
-    } else if first.start < range.start && last.end <= range.end {
-      self.ranges[isect_first].end = range.start - T::one();
+    } else if first.start() < range.start() && last.end() <= range.end() {
+      self.ranges[isect_first] = *self.ranges[isect_first].start()..=*range.start() - T::one();
       (isect_first+1, isect_last)
     // last intersected range remains but is shortened
-    } else if range.start <= first.start && range.end < last.end {
-      self.ranges[isect_last-1].start = range.end + T::one();
+    } else if range.start() <= first.start() && range.end() < last.end() {
+      self.ranges[isect_last-1] = *range.end() + T::one()..=*self.ranges[isect_last-1].end();
       (isect_first, isect_last-1)
     // both first and last range remain and are shortened
     } else {
-      debug_assert!(first.start < range.start && range.end < last.end);
-      self.ranges[isect_first].end    = range.start - T::one();
-      self.ranges[isect_last-1].start = range.end   + T::one();
+      debug_assert!(first.start() < range.start() && range.end() < last.end());
+      self.ranges[isect_first] = *self.ranges[isect_first].start()..=*range.start() - T::one();
+      self.ranges[isect_last-1] = *range.end()   + T::one()..=*self.ranges[isect_last-1].end();
       (isect_first+1, isect_last-1)
     };
     // remove ranges, shift later ranges and truncate
@@ -476,7 +472,7 @@ impl <A, T> RangeSet <A> where
         if is_empty (this) || is_empty (next) {
           return false
         }
-        if next.start <= this.end+T::one() {
+        if *next.start() <= *this.end()+T::one() {
           return false
         }
       }
@@ -505,7 +501,7 @@ impl <A, T> RangeSet <A> where
     while before != after {
       let i = before + (after - before) / 2;
       let last = before;
-      if self.ranges[i].end+T::one() <= range.start {
+      if self.ranges[i].end() < range.start() {
         found  = true;
         before = i;
         if before == last {
@@ -532,7 +528,7 @@ impl <A, T> RangeSet <A> where
     while before != after {
       let i    = before + (after - before) / 2;
       let last = before;
-      if range.end+T::one() <= self.ranges[i].start {
+      if range.end() < self.ranges[i].start() {
         found = true;
         after = i;
       } else {
@@ -558,7 +554,7 @@ impl <A, T> RangeSet <A> where
     while before != after {
       let i = before + (after - before) / 2;
       let last = before;
-      if self.ranges[i].end+T::one() < range.start {
+      if *self.ranges[i].end()+T::one() < *range.start() {
         found  = true;
         before = i;
         if before == last {
@@ -584,7 +580,7 @@ impl <A, T> RangeSet <A> where
     while before != after {
       let i    = before + (after - before) / 2;
       let last = before;
-      if range.end+T::one() < self.ranges[i].start {
+      if *range.end()+T::one() < *self.ranges[i].start() {
         found = true;
         after = i;
       } else {

@@ -1,4 +1,3 @@
-#![feature(inclusive_range)]
 extern crate range_set;
 
 use range_set::RangeSet;
