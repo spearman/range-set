@@ -1,6 +1,6 @@
 [package]
 name = "range-set"
-version = "0.0.5"
+version = "0.0.6"
 authors = ["Shane Pearman <spearman@github.com>", "Alex Moon <alex.r.moon@gmail.com>"]
 license = "Apache-2.0"
 description = "Smallvec-backed containers of sorted integer ranges"
