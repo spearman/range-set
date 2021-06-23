@@ -338,9 +338,7 @@ impl <A, T> RangeSet <A> where
             std::cmp::max (*range.end(), *self.ranges[after-1].end());
           // if there are more than one ranges between we must shift and truncate
           if 1 < after - before - 1 {
-            for i in 0..(after-before-1) {
-              self.ranges[before+1+i] = self.ranges[after + i].clone();
-            }
+            self.ranges.as_mut_slice()[(before + 2)..].rotate_left(after - before - 2);
             let new_len = self.ranges.len() - (after - before - 2);
             self.ranges.truncate (new_len);
           }
@@ -698,5 +696,18 @@ mod tests {
     range_set.insert_range(3..=9);
 
     assert_eq!(range_set.ranges.into_vec(), vec!(1..=1, 3..=9));
+  }
+
+  #[test]
+  fn gap_then_merge_multiple_then_gap() {
+    let mut range_set: RangeSet<[RangeInclusive<u32>; 2]> = RangeSet::new();
+    range_set.insert_range(1..=1);
+    range_set.insert_range(3..=3);
+    range_set.insert_range(5..=5);
+    range_set.insert_range(7..=7);
+    range_set.insert_range(9..=9);
+    range_set.insert_range(3..=7);
+
+    assert_eq!(range_set.ranges.into_vec(), vec!(1..=1, 3..=7, 9..=9));
   }
 }
