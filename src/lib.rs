@@ -314,10 +314,8 @@ impl <A, T> RangeSet <A> where
           let isect = self.range_intersection (&range, 0..after);
           self.ranges[0] =
             std::cmp::min (*range.start(), *self.ranges[0].start())..=
-            std::cmp::max (*range.end(), *self.ranges[after-1].end());
-          for i in 0..after {
-            self.ranges[i+1] = self.ranges[after + i].clone();
-          }
+            std::cmp::max (*range.end(), *self.ranges[after - 1].end());
+          self.ranges.as_mut_slice()[1..].rotate_left(after - 1);
           let new_len = self.ranges.len() - after + 1;
           self.ranges.truncate (new_len);
           if !isect.is_empty() {
@@ -663,12 +661,42 @@ impl <'a, A, T> Iterator for Iter <'a, A, T> where
   }
 }
 
-/*
+
 #[cfg(test)]
 mod tests {
+  use RangeSet;
+  use std::ops::RangeInclusive;
+
   #[test]
-  fn it_works() {
-      assert_eq!(2 + 2, 4);
+  fn merge_multiple() {
+    let mut range_set: RangeSet<[RangeInclusive<u32>; 2]> = RangeSet::new();
+    range_set.insert_range(3..=3);
+    range_set.insert_range(5..=5);
+    range_set.insert_range(7..=7);
+    range_set.insert_range(1..=9);
+
+    assert_eq!(range_set.ranges.into_vec(), vec!(1..=9));
+  }
+
+  #[test]
+  fn merge_multiple_then_gap() {
+    let mut range_set: RangeSet<[RangeInclusive<u32>; 2]> = RangeSet::new();
+    range_set.insert_range(3..=3);
+    range_set.insert_range(5..=5);
+    range_set.insert_range(9..=9);
+    range_set.insert_range(1..=7);
+
+    assert_eq!(range_set.ranges.into_vec(), vec!(1..=7, 9..=9));
+  }
+
+  #[test]
+  fn gap_then_merge_multiple() {
+    let mut range_set: RangeSet<[RangeInclusive<u32>; 2]> = RangeSet::new();
+    range_set.insert_range(1..=1);
+    range_set.insert_range(5..=5);
+    range_set.insert_range(7..=7);
+    range_set.insert_range(3..=9);
+
+    assert_eq!(range_set.ranges.into_vec(), vec!(1..=1, 3..=9));
   }
 }
-*/
