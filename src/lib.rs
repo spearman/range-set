@@ -671,7 +671,15 @@ mod tests {
     range_set.insert_range(3..=3);
     range_set.insert_range(5..=5);
     range_set.insert_range(7..=7);
-    range_set.insert_range(1..=9);
+    assert_eq!(
+      range_set.insert_range(1..=9),
+      {
+        let mut r = RangeSet::from(3..=3);
+        r.insert_range(5..=5);
+        r.insert_range(7..=7);
+        Some(r)
+      }
+    );
 
     assert_eq!(range_set.ranges.into_vec(), vec!(1..=9));
   }
@@ -682,7 +690,14 @@ mod tests {
     range_set.insert_range(3..=3);
     range_set.insert_range(5..=5);
     range_set.insert_range(9..=9);
-    range_set.insert_range(1..=7);
+    assert_eq!(
+      range_set.insert_range(1..=7),
+      {
+        let mut r = RangeSet::from(3..=3);
+        r.insert_range(5..=5);
+        Some(r)
+      }
+    );
 
     assert_eq!(range_set.ranges.into_vec(), vec!(1..=7, 9..=9));
   }
@@ -693,7 +708,14 @@ mod tests {
     range_set.insert_range(1..=1);
     range_set.insert_range(5..=5);
     range_set.insert_range(7..=7);
-    range_set.insert_range(3..=9);
+    assert_eq!(
+      range_set.insert_range(3..=9),
+      {
+        let mut r = RangeSet::from(5..=5);
+        r.insert_range(7..=7);
+        Some(r)
+      }
+    );
 
     assert_eq!(range_set.ranges.into_vec(), vec!(1..=1, 3..=9));
   }
@@ -706,7 +728,15 @@ mod tests {
     range_set.insert_range(5..=5);
     range_set.insert_range(7..=7);
     range_set.insert_range(9..=9);
-    range_set.insert_range(3..=7);
+    assert_eq!(
+      range_set.insert_range(3..=7),
+      {
+        let mut r = RangeSet::from(3..=3);
+        r.insert_range(5..=5);
+        r.insert_range(7..=7);
+        Some(r)
+      }
+    );
 
     assert_eq!(range_set.ranges.into_vec(), vec!(1..=1, 3..=7, 9..=9));
   }
