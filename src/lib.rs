@@ -1,6 +1,10 @@
 //! `RangeSet` container type
 
+#[cfg(feature = "serde")]
+extern crate core;
 extern crate num_traits;
+#[cfg(feature = "serde")]
+extern crate serde as ext_serde;
 extern crate smallvec;
 
 pub mod range_compare;
@@ -9,6 +13,9 @@ pub use range_compare::{
   RangeCompare, RangeDisjoint, RangeIntersect,
   range_compare, intersection, is_empty
 };
+
+#[cfg(feature = "serde")]
+mod serde;
 
 use num_traits::PrimInt;
 
