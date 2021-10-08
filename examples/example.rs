@@ -29,7 +29,7 @@ fn main() {
   assert_eq!(v, vec![3,4,5,6,7,8,9,10,11,12]);
 
   assert_eq!(s.remove_range (7..=9), Some (RangeSet::from (7..=9)));
-  println!("s: {:?}", s);
+  println!("s: {:?}", s.as_ref());
   assert!(s.spilled());
   let v : Vec <u8> = s.iter().collect();
   assert_eq!(v, vec![3,4,5,6,10,11,12]);

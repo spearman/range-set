@@ -636,6 +636,16 @@ impl <A, T> From <std::ops::RangeInclusive <T>> for RangeSet <A> where
   }
 }
 
+impl <A, T> AsRef <smallvec::SmallVec <A>> for RangeSet <A> where
+  A : smallvec::Array <Item=std::ops::RangeInclusive <T>>
+    + Eq + std::fmt::Debug,
+  T : PrimInt + std::fmt::Debug
+{
+  fn as_ref (&self) -> &smallvec::SmallVec <A> {
+    &self.ranges
+  }
+}
+
 impl <'a, A, T> Iterator for Iter <'a, A, T> where
   A : smallvec::Array <Item=std::ops::RangeInclusive <T>>
     + Eq + std::fmt::Debug,
