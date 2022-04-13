@@ -12,5 +12,5 @@ num-traits = "0.2.*"
 serde = { version = "1.0.*", optional = true }
 smallvec = { version = "0.6.*" }
 
-[dev-dependencies]
-serde_json = "1.0.79"
+[features]
+serde = ["dep:serde", "smallvec/serde"]

@@ -1,10 +1,8 @@
 //! `RangeSet` container type
 
-#[cfg(feature = "serde")]
-extern crate core;
 extern crate num_traits;
 #[cfg(feature = "serde")]
-extern crate serde as ext_serde;
+extern crate serde;
 extern crate smallvec;
 
 pub mod range_compare;
@@ -13,9 +11,6 @@ pub use range_compare::{
   RangeCompare, RangeDisjoint, RangeIntersect,
   range_compare, intersection, is_empty
 };
-
-#[cfg(feature = "serde")]
-mod serde;
 
 use num_traits::PrimInt;
 
@@ -666,6 +661,31 @@ impl <'a, A, T> Iterator for Iter <'a, A, T> where
   }
 }
 
+#[cfg(feature = "serde")]
+impl<A, T> serde::Serialize for RangeSet<A> where
+  A : smallvec::Array <Item=std::ops::RangeInclusive <T>>
+    + Eq + std::fmt::Debug,
+  T : PrimInt + std::fmt::Debug + serde::Serialize,
+{
+  fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+    self.ranges.serialize(serializer)
+  }
+}
+
+#[cfg(feature = "serde")]
+impl<'de, A, T> serde::Deserialize<'de> for RangeSet<A> where
+  A : smallvec::Array <Item=std::ops::RangeInclusive <T>>
+    + Eq + std::fmt::Debug,
+  T : PrimInt + std::fmt::Debug + serde::Deserialize<'de>,
+{
+  fn deserialize<D: serde::Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+    let ranges = smallvec::SmallVec::deserialize(deserializer)?;
+
+    Ok(Self {
+      ranges
+    })
+  }
+}
 
 #[cfg(test)]
 mod tests {
