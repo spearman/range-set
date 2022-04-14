@@ -2,7 +2,7 @@
 
 extern crate num_traits;
 #[cfg(feature = "serde")]
-extern crate serde;
+extern crate serde_crate as serde;
 extern crate smallvec;
 
 pub mod range_compare;
