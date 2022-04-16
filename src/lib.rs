@@ -8,15 +8,14 @@ extern crate smallvec;
 pub mod range_compare;
 
 pub use range_compare::{
-  RangeCompare, RangeDisjoint, RangeIntersect,
-  range_compare, intersection, is_empty
+  RangeCompare, RangeDisjoint, RangeIntersect, range_compare, intersection
 };
 
 use num_traits::PrimInt;
 
-///////////////////////////////////////////////////////////////////////////////
-//  structs                                                                  //
-///////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+//  structs                                                                   //
+////////////////////////////////////////////////////////////////////////////////
 
 /// A set of primitive integers represented as a sorted list of disjoint,
 /// inclusive ranges.
@@ -47,7 +46,7 @@ use num_traits::PrimInt;
 /// assert!(!s.spilled());
 /// # }
 /// ```
-#[derive(Clone,Debug,Eq,PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct RangeSet <A> where
   A       : smallvec::Array + Eq + std::fmt::Debug,
   A::Item : Clone + Eq + std::fmt::Debug
@@ -65,9 +64,9 @@ pub struct Iter <'a, A, T> where
   range       : std::ops::RangeInclusive <T>
 }
 
-///////////////////////////////////////////////////////////////////////////////
-//  functions                                                                //
-///////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+//  functions                                                                 //
+////////////////////////////////////////////////////////////////////////////////
 
 /// Report some sizes of various range set types
 pub fn report_sizes() {
@@ -133,9 +132,9 @@ pub fn report_sizes() {
   println!("...RangeSet report sizes");
 }
 
-///////////////////////////////////////////////////////////////////////////////
-//  impls                                                                    //
-///////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+//  impls                                                                     //
+////////////////////////////////////////////////////////////////////////////////
 
 // the majority of the logic for modifying range sets are the insert_range and
 // remove_range methods
@@ -260,7 +259,7 @@ impl <A, T> RangeSet <A> where
   /// assert_eq!(s.insert_range (20..=30), None);
   /// ```
   pub fn insert_range (&mut self, range : A::Item) -> Option <Self> {
-    if is_empty (&range) {       // empty range
+    if range.is_empty () {       // empty range
       return None
     }
     if self.ranges.is_empty() { // empty range set
@@ -340,7 +339,8 @@ impl <A, T> RangeSet <A> where
             std::cmp::max (*range.end(), *self.ranges[after-1].end());
           // if there are more than one ranges between we must shift and truncate
           if 1 < after - before - 1 {
-            self.ranges.as_mut_slice()[(before + 2)..].rotate_left(after - before - 2);
+            self.ranges.as_mut_slice()[(before + 2)..]
+              .rotate_left (after - before - 2);
             let new_len = self.ranges.len() - (after - before - 2);
             self.ranges.truncate (new_len);
           }
@@ -367,7 +367,7 @@ impl <A, T> RangeSet <A> where
   /// assert!(s.is_empty());
   /// ```
   pub fn remove_range (&mut self, range : A::Item) -> Option <Self> {
-    if self.ranges.is_empty() || is_empty (&range) {  // empty
+    if self.ranges.is_empty() || range.is_empty() {  // empty
       return None
     }
     let before = Self::binary_search_before (self, &range);
@@ -387,7 +387,9 @@ impl <A, T> RangeSet <A> where
     // a split range is only possible if there was a single intersection
     if isect_last - isect_first == 1 {
       let single_range = self.ranges[isect_first].clone();
-      if single_range.start() < range.start() && range.end() < single_range.end() {
+      if single_range.start() < range.start() &&
+        range.end() < single_range.end()
+      {
         let left  = *single_range.start()..=*range.start() - T::one();
         let right = *range.end() + T::one()..=*single_range.end();
         self.ranges[isect_first] = right;
@@ -408,17 +410,21 @@ impl <A, T> RangeSet <A> where
       (isect_first, isect_last)
     // first intersected range remains but is shortened
     } else if first.start() < range.start() && last.end() <= range.end() {
-      self.ranges[isect_first] = *self.ranges[isect_first].start()..=*range.start() - T::one();
+      self.ranges[isect_first] =
+        *self.ranges[isect_first].start()..=*range.start() - T::one();
       (isect_first+1, isect_last)
     // last intersected range remains but is shortened
     } else if range.start() <= first.start() && range.end() < last.end() {
-      self.ranges[isect_last-1] = *range.end() + T::one()..=*self.ranges[isect_last-1].end();
+      self.ranges[isect_last-1] =
+        *range.end() + T::one()..=*self.ranges[isect_last-1].end();
       (isect_first, isect_last-1)
     // both first and last range remain and are shortened
     } else {
       debug_assert!(first.start() < range.start() && range.end() < last.end());
-      self.ranges[isect_first] = *self.ranges[isect_first].start()..=*range.start() - T::one();
-      self.ranges[isect_last-1] = *range.end()   + T::one()..=*self.ranges[isect_last-1].end();
+      self.ranges[isect_first] =
+        *self.ranges[isect_first].start()..=*range.start() - T::one();
+      self.ranges[isect_last-1] =
+        *range.end()   + T::one()..=*self.ranges[isect_last-1].end();
       (isect_first+1, isect_last-1)
     };
     // remove ranges, shift later ranges and truncate
@@ -467,7 +473,7 @@ impl <A, T> RangeSet <A> where
       for i in 0..ranges.len()-1 { // safe to subtract here since non-empty
         let this = &ranges[i];
         let next = &ranges[i+1];  // safe to index
-        if is_empty (this) || is_empty (next) {
+        if this.is_empty() || next.is_empty() {
           return false
         }
         if *next.start() <= *this.end()+T::one() {
@@ -604,7 +610,7 @@ impl <A, T> RangeSet <A> where
     for i in range_range {
       let r     = &self.ranges[i];
       let rsect = intersection (&range, &r);
-      if !is_empty (&rsect) {
+      if !rsect.is_empty() {
         isect.ranges.push (rsect);
       }
     }
@@ -651,7 +657,7 @@ impl <'a, A, T> Iterator for Iter <'a, A, T> where
     } else {
       if self.range_index < self.range_set.ranges.len() {
         self.range = self.range_set.ranges[self.range_index].clone();
-        debug_assert!(!is_empty (&self.range));
+        debug_assert!(!self.range.is_empty());
         self.range_index += 1;
         self.range.next()
       } else {
@@ -667,7 +673,9 @@ impl<A, T> serde::Serialize for RangeSet<A> where
     + Eq + std::fmt::Debug,
   T : PrimInt + std::fmt::Debug + serde::Serialize,
 {
-  fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+  fn serialize<S: serde::Serializer>(&self, serializer: S)
+    -> Result<S::Ok, S::Error>
+  {
     self.ranges.serialize(serializer)
   }
 }
@@ -678,7 +686,9 @@ impl<'de, A, T> serde::Deserialize<'de> for RangeSet<A> where
     + Eq + std::fmt::Debug,
   T : PrimInt + std::fmt::Debug + serde::Deserialize<'de>,
 {
-  fn deserialize<D: serde::Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+  fn deserialize<D: serde::Deserializer<'de>>(deserializer: D)
+    -> Result<Self, D::Error>
+  {
     let ranges = smallvec::SmallVec::deserialize(deserializer)?;
 
     Ok(Self {
@@ -689,7 +699,7 @@ impl<'de, A, T> serde::Deserialize<'de> for RangeSet<A> where
 
 #[cfg(test)]
 mod tests {
-  use RangeSet;
+  use crate::RangeSet;
   use std::ops::RangeInclusive;
 
   #[test]

@@ -1,16 +1,17 @@
 [package]
 name = "range-set"
-version = "0.0.7"
+version = "0.0.8"
 authors = ["Shane Pearman <spearman@github.com>", "Alex Moon <alex.r.moon@gmail.com>"]
 license = "Apache-2.0"
 description = "Smallvec-backed containers of sorted integer ranges"
 repository = "https://github.com/spearman/range-set"
 readme = "README.md"
+edition = "2021"
 
 [dependencies]
 num-traits = "0.2.*"
-serde_crate = { package = "serde", version = "1.0.*", optional = true }
-smallvec = { version = "0.6.*" }
+serde_crate = { package = "serde", version = "1.*", optional = true }
+smallvec = { version = "1.*" }
 
 [features]
 serde = ["serde_crate", "smallvec/serde"]

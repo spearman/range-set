@@ -1,12 +1,11 @@
 //! Type and functions for comparing inclusive ranges
 
-use ::{std};
-
+use std;
 use num_traits::PrimInt;
 
-///////////////////////////////////////////////////////////////////////////////
-//  enums                                                                    //
-///////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+//  enums                                                                     //
+////////////////////////////////////////////////////////////////////////////////
 
 /// Result of comparing a pair of ranges `(A,B)`
 #[derive(Debug,Eq,PartialEq)]
@@ -57,9 +56,9 @@ pub enum RangeIntersect {
   ContainedByLast
 }
 
-///////////////////////////////////////////////////////////////////////////////
-//  functions                                                                //
-///////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+//  functions                                                                 //
+////////////////////////////////////////////////////////////////////////////////
 
 /// Compare two inclusive ranges.
 ///
@@ -89,37 +88,23 @@ pub fn range_compare <T : PrimInt> (
 ///
 /// ```
 /// # use range_set::*;
-/// assert_eq!(
-///   intersection (&(0..=3), &(2..=5)),
-///   2..=3);
-/// assert!(is_empty (&intersection (&(0..=2), &(3..=5))));
+/// assert_eq!(intersection (&(0..=3), &(2..=5)), 2..=3);
+/// assert!(intersection (&(0..=2), &(3..=5)).is_empty());
 /// ```
 pub fn intersection <T : PrimInt> (
   left : &std::ops::RangeInclusive <T>, right : &std::ops::RangeInclusive <T>
 ) -> std::ops::RangeInclusive <T> {
   if let None = RangeDisjoint::compare (left, right) {
-    std::cmp::max (*left.start(), *right.start())..=std::cmp::min (*left.end(), *right.end())
+    std::cmp::max (*left.start(), *right.start())..=
+    std::cmp::min (*left.end(), *right.end())
   } else {
     T::one()..=T::zero()
   }
 }
 
-/// TODO: replace with standard library is_empty method when PR #48087 is merged
-///
-/// ```
-/// # use range_set::*;
-/// assert!(is_empty (&(1..=0)));
-/// ```
-#[inline]
-pub fn is_empty <T : PrimInt>
-  (range : &std::ops::RangeInclusive <T>) -> bool
-{
-  range.end() < range.start()
-}
-
-///////////////////////////////////////////////////////////////////////////////
-//  impls                                                                    //
-///////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+//  impls                                                                     //
+////////////////////////////////////////////////////////////////////////////////
 
 impl From <RangeDisjoint> for RangeCompare {
   fn from (disjoint : RangeDisjoint) -> Self {
@@ -165,11 +150,12 @@ impl RangeDisjoint {
   pub fn compare <T : PrimInt> (
     left : &std::ops::RangeInclusive <T>, right : &std::ops::RangeInclusive <T>
   ) -> Option <Self> {
-    match (is_empty (left), is_empty (right)) {
+    match (left.is_empty(), right.is_empty()) {
       (true, true)   => Some (RangeDisjoint::EmptyBoth),
       (true, false)  => Some (RangeDisjoint::EmptyLhs),
       (false, true)  => Some (RangeDisjoint::EmptyRhs),
-      (false, false) => if right.start() <= left.end() && left.start() <= right.end()
+      (false, false) => if right.start() <= left.end()
+        && left.start() <= right.end()
         || left.start() <= right.end() && right.start() <= left.end()
       {
         None  // intersection
@@ -231,9 +217,11 @@ impl RangeIntersect {
   pub fn compare <T : PrimInt> (
     left : &std::ops::RangeInclusive <T>, right : &std::ops::RangeInclusive <T>
   ) -> Option <Self> {
-    match (is_empty (left), is_empty (right)) {
+    match (left.is_empty(), right.is_empty()) {
       (true, true) | (true, false) | (false, true) => None,
-      (false, false) => if left.end() < right.start() || right.end() < left.start() {
+      (false, false) => if left.end() < right.start() ||
+        right.end() < left.start()
+      {
         None  // disjoint
       } else {
         Some (if left == right {
