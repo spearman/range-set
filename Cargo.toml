@@ -6,7 +6,12 @@ license = "Apache-2.0"
 description = "Smallvec-backed containers of sorted integer ranges"
 repository = "https://github.com/spearman/range-set"
 readme = "README.md"
+edition = "2021"
 
 [dependencies]
 num-traits = "0.2.*"
-smallvec = "0.6.*"
+serde_crate = { package = "serde", version = "1.*", optional = true }
+smallvec = { version = "1.*" }
+
+[features]
+serde = ["serde_crate", "smallvec/serde"]

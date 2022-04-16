@@ -31,15 +31,6 @@ be traversed in-order.
 
 ## Usage
 
-Inclusive ranges are an unstable Rust feature (as of `rustc` 1.26) so they must
-be enabled in the crate root:
-
-```rust
-#![feature(inclusive_range)]
-
-extern crate range_set;
-```
-
 ```rust
   use range_set::RangeSet;
   use std::ops::RangeInclusive;
