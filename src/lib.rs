@@ -62,6 +62,7 @@ pub struct RangeSet <A> where
   ranges  : smallvec::SmallVec <A>
 }
 
+/// Iterates over elements of the `RangeSet`
 pub struct Iter <'a, A, T> where
   A : 'a + smallvec::Array <Item=std::ops::RangeInclusive <T>>
     + Eq + std::fmt::Debug,
@@ -445,6 +446,10 @@ impl <A, T> RangeSet <A> where
     Some (isect)
   }
 
+  /// Iterate over elements of the `RangeSet`.
+  ///
+  /// To iterate over individual ranges, use `range_set.as_ref().iter()`
+  /// instead.
   pub fn iter (&self) -> Iter <A, T> {
     Iter {
       range_set:   self,
