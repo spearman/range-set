@@ -1,4 +1,9 @@
-//! `RangeSet` container type
+//! `RangeSet` container type.
+//!
+//! `RangeSet` stores collections of `PrimInt` values as inclusive ranges using
+//! generic [`SmallVec`](https://docs.rs/smallvec)-backed storage. This means
+//! that a certain amount of ranges will fit on the stack before spilling over
+//! to the heap.
 
 extern crate num_traits;
 #[cfg(feature = "serde")]
@@ -142,8 +147,7 @@ pub fn report_sizes() {
 // there are some helper functions with additional logic such as the
 // binary_search functions
 impl <A, T> RangeSet <A> where
-  A : smallvec::Array <Item=std::ops::RangeInclusive <T>>
-    + Eq + std::fmt::Debug,
+  A : smallvec::Array <Item=std::ops::RangeInclusive <T>> + Eq + std::fmt::Debug,
   T : PrimInt + std::fmt::Debug
 {
   /// New empty range set
