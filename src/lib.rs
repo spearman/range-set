@@ -25,6 +25,9 @@ use num_traits::PrimInt;
 /// A set of primitive integers represented as a sorted list of disjoint,
 /// inclusive ranges.
 ///
+/// The generic parameter specifies the type of on-stack array to be used in the
+/// backing `SmallVec` storage.
+///
 /// ```
 /// # extern crate smallvec;
 /// # extern crate range_set;
