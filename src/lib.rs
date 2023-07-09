@@ -200,6 +200,144 @@ impl <A, T> RangeSet <A> where
     self.ranges
   }
 
+  /// Returns true if the element is contained in this set.
+  /// 
+  /// ```
+  /// # use range_set::RangeSet;
+  /// # use std::ops::RangeInclusive;
+  /// let mut set = RangeSet::<[RangeInclusive <u8>; 4]>::new();
+  /// set.insert_range(2..=5);
+  /// set.insert_range(10..=70);
+  /// set.insert(72);
+  /// set.insert_range(74..=80);
+  /// 
+  /// assert!(set.contains(2));
+  /// assert!(set.contains(3));
+  /// assert!(set.contains(33));
+  /// assert!(set.contains(72));
+  /// assert!(set.contains(80));
+  /// 
+  /// assert!(!set.contains(0));
+  /// assert!(!set.contains(6));
+  /// assert!(!set.contains(71));
+  /// assert!(!set.contains(122));
+  /// ```
+  pub fn contains (&self, element : T) -> bool {
+    self.contains_range(element..=element)
+  }
+
+  /// Returns true if all the elements of `range` are contained in this set.
+  /// 
+  /// ```
+  /// # use range_set::RangeSet;
+  /// # use std::ops::RangeInclusive;
+  /// let mut set = RangeSet::<[RangeInclusive <u8>; 4]>::new();
+  /// set.insert_range(2..=5);
+  /// set.insert_range(10..=70);
+  /// set.insert(72);
+  /// set.insert_range(74..=80);
+  /// 
+  /// assert!(set.contains_range(2..=4));
+  /// assert!(set.contains_range(3..=5));
+  /// assert!(set.contains_range(33..=50));
+  /// assert!(set.contains_range(75..=80));
+  /// 
+  /// assert!(!set.contains_range(0..=6));
+  /// assert!(!set.contains_range(3..=6));
+  /// assert!(!set.contains_range(10..=72));
+  /// assert!(!set.contains_range(50..=75));
+  /// assert!(!set.contains_range(71..=72));
+  /// assert!(!set.contains_range(122..=200));
+  /// ```
+  pub fn contains_range (&self, range : A::Item) -> bool {
+    self.contains_range_ref(&range)
+  }
+
+  /// See documentation for `contains_range`. By-reference version
+  /// needed for `is_subset`.
+  fn contains_range_ref (&self, range: &A::Item) -> bool {
+    if range.is_empty() {
+      return true;
+    }
+
+    if self.ranges.is_empty() {
+      return false;
+    }
+
+    // Look for any the highest range completely before the requested elements.
+    let test_range = if let Some(before) = self.binary_search_before(&range) {
+      // The very next range must either overlap with the requested elements, or must
+      // be greater than all requested elements.
+      if let Some(next) = self.ranges.get(before + 1) {
+        next
+      } else {
+        // There are no other ranges to check.
+        return false;
+      }
+     } else {
+      // There are no ranges completely before the requested elements, so try the first
+      // range. This index operation cannot fail, because we checked self.ranges.is_empty()
+      // above.
+      &self.ranges[0]
+     };
+
+    // Check if that range contains all the requested elements.
+    test_range.contains(range.start()) && test_range.contains(range.end())
+  }
+
+  /// Returns `true` if the set is a superset of another, i.e., `self` contains at least all the elements in `other`.
+  ///
+  /// ```
+  /// # use range_set::RangeSet;
+  /// # use std::ops::RangeInclusive;
+  /// 
+  /// let main = RangeSet::<[RangeInclusive<u8>; 1]>::from(3..=15);
+  /// let mut superset = RangeSet::from(0..=15);
+  /// 
+  /// assert!(superset.is_superset(&main));
+  /// 
+  /// superset.remove(8);
+  /// 
+  /// assert!(!superset.is_superset(&main));
+  /// ```
+  pub fn is_superset (&self, other: &Self) -> bool {
+    other.is_subset(self)
+  }
+
+  /// Returns `true` if the set is a subset of another, i.e., `other` contains at least all the elements in `self`.
+  /// 
+  /// ```
+  /// # use range_set::RangeSet;
+  /// # use std::ops::RangeInclusive;
+  /// 
+  /// let main = RangeSet::<[RangeInclusive<u8>; 1]>::from(3..=15);
+  /// let mut subset = RangeSet::from(6..=10);
+  /// 
+  /// assert!(subset.is_subset(&main));
+  /// 
+  /// subset.insert(99);
+  /// 
+  /// assert!(!subset.is_subset(&main));
+  /// ```
+  pub fn is_subset (&self, other: &Self) -> bool {
+    for range in &self.ranges {
+      if !other.contains_range_ref(range) {
+        return false;
+      }
+    }
+    true
+  }
+
+  /// Returns the largest element in the set, or `None` if the set is empty.
+  pub fn max (&self) -> Option<T> {
+    self.ranges.last().map(|r| *r.end())
+  }
+
+  /// Returns the smallest element in the set, or `None` if the set is empty.
+  pub fn min (&self) -> Option<T> {
+    self.ranges.first().map(|r| *r.start())
+  }
+
   /// Insert a single element, returning true if it was successfully inserted
   /// or else false if it was already present
   ///
@@ -798,5 +936,41 @@ mod tests {
     );
 
     assert_eq!(range_set.ranges.into_vec(), vec!(1..=1, 3..=7, 9..=9));
+  }
+
+  #[test]
+  fn test_max() {
+    let mut set = RangeSet::<[RangeInclusive <u8>; 2]>::new();
+    assert_eq!(set.max(), None);
+
+    set.insert_range(4..=5);
+    assert_eq!(set.max(), Some(5));
+
+    set.insert(21);
+    assert_eq!(set.max(), Some(21));
+
+    set.insert_range(6..=13);
+    assert_eq!(set.max(), Some(21));
+
+    set.remove(21);
+    assert_eq!(set.max(), Some(13));
+  }
+
+  #[test]
+  fn test_min() {
+    let mut set = RangeSet::<[RangeInclusive <u8>; 2]>::new();
+    assert_eq!(set.min(), None);
+
+    set.insert_range(4..=5);
+    assert_eq!(set.min(), Some(4));
+
+    set.insert(2);
+    assert_eq!(set.min(), Some(2));
+
+    set.insert_range(6..=13);
+    assert_eq!(set.min(), Some(2));
+
+    set.remove_range(2..=4);
+    assert_eq!(set.min(), Some(5));
   }
 }
