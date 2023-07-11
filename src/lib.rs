@@ -639,6 +639,49 @@ impl <A, T> RangeSet <A> where
   fn is_valid (&self) -> bool {
     Self::valid_range_vec (&self.ranges)
   }
+
+  /// Equality test that ignores the array size parameter.
+  /// ```
+  /// # use range_set::RangeSet;
+  /// # use std::ops::RangeInclusive;
+  /// 
+  /// let mut size_4: RangeSet<[RangeInclusive<u32>; 4]> = RangeSet::new();
+  /// size_4.insert_range(1..=1);
+  /// size_4.insert_range(3..=3);
+  /// 
+  ///  let mut size_10: RangeSet<[RangeInclusive<u32>; 10]> = RangeSet::new();
+  ///  size_10.insert_range(1..=1);
+  ///  size_10.insert_range(3..=3);
+  /// 
+  ///  assert!(size_4.any_size_eq(&size_10));
+  /// ```
+  pub fn any_size_eq<B>(&self, other: &RangeSet<B>) -> bool
+  where B: smallvec::Array<Item = A::Item> + Eq + std::fmt::Debug
+  {
+    self.ranges.eq(&other.ranges)
+  }
+
+  /// Inequality test that ignores the array size parameter. This is the
+  /// inverse of [`any_size_eq`], using the underlying type's 
+  /// ```
+  /// # use range_set::RangeSet;
+  /// # use std::ops::RangeInclusive;
+  /// 
+  /// let mut size_4: RangeSet<[RangeInclusive<u32>; 4]> = RangeSet::new();
+  /// size_4.insert_range(1..=1);
+  /// size_4.insert_range(3..=3);
+  /// 
+  ///  let mut size_10: RangeSet<[RangeInclusive<u32>; 10]> = RangeSet::new();
+  ///  size_10.insert_range(1..=1);
+  ///  size_10.insert_range(3..=3);
+  /// 
+  ///  assert!(!size_4.any_size_ne(&size_10));
+  /// ```
+  pub fn any_size_ne<B>(&self, other: &RangeSet<B>) -> bool
+  where B: smallvec::Array<Item = A::Item> + Eq + std::fmt::Debug
+  {
+    self.ranges.ne(&other.ranges)
+  }
 }
 
 impl <A, T> From <std::ops::RangeInclusive <T>> for RangeSet <A> where
@@ -665,6 +708,32 @@ impl <A, T> AsRef <smallvec::SmallVec <A>> for RangeSet <A> where
     &self.ranges
   }
 }
+
+/* 
+This is a better PartialEq implementation than the derived one; it's
+generic over array sizes. Smallvec's array length should be an internal
+implementation detail, and shouldn't affect whether two RangeSets are
+equal.
+
+However, replacing the current derived impl with this one is a breaking
+change. Type inference which depended on equal array sizes breaks with
+this version. For example, if A is `RangeSet<[u8; 5]>` and B is `RangeSet<_>`,
+then rust can infer B must be `RangeSet<[u8; 5]>`. 
+
+For now, `any_size_eq` and `any_size_ne` have been added to the main
+impl. This impl was somewhat tricky to write, so it's saved here for
+a future crate version.
+
+impl<A, B> PartialEq<RangeSet<B>> for RangeSet<A> where
+  A       : smallvec::Array + Eq + std::fmt::Debug,
+  A::Item : Clone + Eq + std::fmt::Debug,
+  B       : smallvec::Array<Item = A::Item> + Eq + std::fmt::Debug
+{
+  fn eq(&self, other: &RangeSet<B>) -> bool {
+      self.ranges.eq(&other.ranges)
+  }
+}
+*/
 
 impl <'a, A, T> Iterator for Iter <'a, A, T> where
   A : smallvec::Array <Item=std::ops::RangeInclusive <T>>
