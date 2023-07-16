@@ -16,7 +16,9 @@ pub use range_compare::{
   RangeCompare, RangeDisjoint, RangeIntersect, range_compare, intersection
 };
 
+use std::ops::RangeInclusive;
 use num_traits::PrimInt;
+use smallvec::SmallVec;
 
 ////////////////////////////////////////////////////////////////////////////////
 //  structs                                                                   //
@@ -59,84 +61,121 @@ pub struct RangeSet <A> where
   A       : smallvec::Array + Eq + std::fmt::Debug,
   A::Item : Clone + Eq + std::fmt::Debug
 {
-  ranges  : smallvec::SmallVec <A>
+  ranges : SmallVec <A>
 }
 
 /// Iterates over elements of the `RangeSet`
 pub struct Iter <'a, A, T> where
-  A : 'a + smallvec::Array <Item=std::ops::RangeInclusive <T>>
-    + Eq + std::fmt::Debug,
+  A : 'a + smallvec::Array <Item=RangeInclusive <T>> + Eq + std::fmt::Debug,
   T : 'a + PrimInt + std::fmt::Debug
 {
   range_set   : &'a RangeSet <A>,
   range_index : usize,
-  range       : std::ops::RangeInclusive <T>
+  range       : RangeInclusive <T>
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 //  functions                                                                 //
 ////////////////////////////////////////////////////////////////////////////////
 
+/// Tests a slice of ranges for validity as a range set: the element ranges
+/// must be properly disjoint (not adjacent) and sorted.
+///
+/// ```
+/// # extern crate smallvec;
+/// # extern crate range_set;
+/// # use std::ops::RangeInclusive;
+/// # use range_set::*;
+/// # fn main() {
+/// let mut v = Vec::new();
+/// assert!(valid_range_slice (&v));
+/// v.push (0..=3);
+/// assert!(valid_range_slice (&v));
+/// v.push (6..=10);
+/// assert!(valid_range_slice (&v));
+/// v.push (0..=1);
+/// assert!(!valid_range_slice (&v));
+/// # }
+/// ```
+pub fn valid_range_slice <T, V> (ranges : V) -> bool where
+  T : PartialOrd + PrimInt,
+  V : AsRef <[RangeInclusive <T>]>
+{
+  let ranges = ranges.as_ref();
+  if !ranges.as_ref().is_empty() {
+    for i in 0..ranges.len()-1 { // safe to subtract here since non-empty
+      let this = &ranges[i];
+      let next = &ranges[i+1];  // safe to index
+      if this.is_empty() || next.is_empty() {
+        return false
+      }
+      if *next.start() <= *this.end()+T::one() {
+        return false
+      }
+    }
+  }
+  true
+}
+
 /// Report some sizes of various range set types
 pub fn report_sizes() {
-  use std::ops::RangeInclusive;
-
+  use std::mem::size_of;
   println!("RangeSet report sizes...");
 
   println!("  size of RangeSet <[RangeInclusive <u32>; 1]>: {}",
-    std::mem::size_of::<RangeSet <[RangeInclusive <u32>; 1]>>());
+    size_of::<RangeSet <[RangeInclusive <u32>; 1]>>());
   println!("  size of RangeSet <[RangeInclusive <u16>; 1]>: {}",
-    std::mem::size_of::<RangeSet <[RangeInclusive <u16>; 1]>>());
+    size_of::<RangeSet <[RangeInclusive <u16>; 1]>>());
   println!("  size of RangeSet <[RangeInclusive <u32>; 1]>: {}",
-    std::mem::size_of::<RangeSet <[RangeInclusive <u32>; 1]>>());
+    size_of::<RangeSet <[RangeInclusive <u32>; 1]>>());
   println!("  size of RangeSet <[RangeInclusive <u64>; 1]>: {}",
-    std::mem::size_of::<RangeSet <[RangeInclusive <u64>; 1]>>());
+    size_of::<RangeSet <[RangeInclusive <u64>; 1]>>());
   println!("  size of RangeSet <[RangeInclusive <usize>; 1]>: {}",
-    std::mem::size_of::<RangeSet <[RangeInclusive <usize>; 1]>>());
+    size_of::<RangeSet <[RangeInclusive <usize>; 1]>>());
 
   println!("  size of RangeSet <[RangeInclusive <u32>; 2]>: {}",
-    std::mem::size_of::<RangeSet <[RangeInclusive <u32>; 2]>>());
+    size_of::<RangeSet <[RangeInclusive <u32>; 2]>>());
   println!("  size of RangeSet <[RangeInclusive <u16>; 2]>: {}",
-    std::mem::size_of::<RangeSet <[RangeInclusive <u16>; 2]>>());
+    size_of::<RangeSet <[RangeInclusive <u16>; 2]>>());
   println!("  size of RangeSet <[RangeInclusive <u32>; 2]>: {}",
-    std::mem::size_of::<RangeSet <[RangeInclusive <u32>; 2]>>());
+    size_of::<RangeSet <[RangeInclusive <u32>; 2]>>());
   println!("  size of RangeSet <[RangeInclusive <u64>; 2]>: {}",
-    std::mem::size_of::<RangeSet <[RangeInclusive <u64>; 2]>>());
+    size_of::<RangeSet <[RangeInclusive <u64>; 2]>>());
   println!("  size of RangeSet <[RangeInclusive <usize>; 2]>: {}",
-    std::mem::size_of::<RangeSet <[RangeInclusive <usize>; 2]>>());
+    size_of::<RangeSet <[RangeInclusive <usize>; 2]>>());
 
   println!("  size of RangeSet <[RangeInclusive <u32>; 4]>: {}",
-    std::mem::size_of::<RangeSet <[RangeInclusive <u32>; 4]>>());
+    size_of::<RangeSet <[RangeInclusive <u32>; 4]>>());
   println!("  size of RangeSet <[RangeInclusive <u16>; 4]>: {}",
-    std::mem::size_of::<RangeSet <[RangeInclusive <u16>; 4]>>());
+    size_of::<RangeSet <[RangeInclusive <u16>; 4]>>());
   println!("  size of RangeSet <[RangeInclusive <u32>; 4]>: {}",
-    std::mem::size_of::<RangeSet <[RangeInclusive <u32>; 4]>>());
+    size_of::<RangeSet <[RangeInclusive <u32>; 4]>>());
   println!("  size of RangeSet <[RangeInclusive <u64>; 4]>: {}",
-    std::mem::size_of::<RangeSet <[RangeInclusive <u64>; 4]>>());
+    size_of::<RangeSet <[RangeInclusive <u64>; 4]>>());
   println!("  size of RangeSet <[RangeInclusive <usize>; 4]>: {}",
-    std::mem::size_of::<RangeSet <[RangeInclusive <usize>; 4]>>());
+    size_of::<RangeSet <[RangeInclusive <usize>; 4]>>());
 
   println!("  size of RangeSet <[RangeInclusive <u32>; 8]>: {}",
-    std::mem::size_of::<RangeSet <[RangeInclusive <u32>; 8]>>());
+    size_of::<RangeSet <[RangeInclusive <u32>; 8]>>());
   println!("  size of RangeSet <[RangeInclusive <u16>; 8]>: {}",
-    std::mem::size_of::<RangeSet <[RangeInclusive <u16>; 8]>>());
+    size_of::<RangeSet <[RangeInclusive <u16>; 8]>>());
   println!("  size of RangeSet <[RangeInclusive <u32>; 8]>: {}",
-    std::mem::size_of::<RangeSet <[RangeInclusive <u32>; 8]>>());
+    size_of::<RangeSet <[RangeInclusive <u32>; 8]>>());
   println!("  size of RangeSet <[RangeInclusive <u64>; 8]>: {}",
-    std::mem::size_of::<RangeSet <[RangeInclusive <u64>; 8]>>());
+    size_of::<RangeSet <[RangeInclusive <u64>; 8]>>());
   println!("  size of RangeSet <[RangeInclusive <usize>; 8]>: {}",
-    std::mem::size_of::<RangeSet <[RangeInclusive <usize>; 8]>>());
+    size_of::<RangeSet <[RangeInclusive <usize>; 8]>>());
 
   println!("  size of RangeSet <[RangeInclusive <u32>; 16]>: {}",
-    std::mem::size_of::<RangeSet <[RangeInclusive <u32>; 16]>>());
+    size_of::<RangeSet <[RangeInclusive <u32>; 16]>>());
   println!("  size of RangeSet <[RangeInclusive <u16>; 16]>: {}",
-    std::mem::size_of::<RangeSet <[RangeInclusive <u16>; 16]>>());
+    size_of::<RangeSet <[RangeInclusive <u16>; 16]>>());
   println!("  size of RangeSet <[RangeInclusive <u32>; 16]>: {}",
-    std::mem::size_of::<RangeSet <[RangeInclusive <u32>; 16]>>());
+    size_of::<RangeSet <[RangeInclusive <u32>; 16]>>());
   println!("  size of RangeSet <[RangeInclusive <u64>; 16]>: {}",
-    std::mem::size_of::<RangeSet <[RangeInclusive <u64>; 16]>>());
+    size_of::<RangeSet <[RangeInclusive <u64>; 16]>>());
   println!("  size of RangeSet <[RangeInclusive <usize>; 16]>: {}",
-    std::mem::size_of::<RangeSet <[RangeInclusive <usize>; 16]>>());
+    size_of::<RangeSet <[RangeInclusive <usize>; 16]>>());
 
   println!("...RangeSet report sizes");
 }
@@ -151,14 +190,14 @@ pub fn report_sizes() {
 // there are some helper functions with additional logic such as the
 // binary_search functions
 impl <A, T> RangeSet <A> where
-  A : smallvec::Array <Item=std::ops::RangeInclusive <T>> + Eq + std::fmt::Debug,
+  A : smallvec::Array <Item=RangeInclusive <T>> + Eq + std::fmt::Debug,
   T : PrimInt + std::fmt::Debug
 {
   /// New empty range set
   #[inline]
   pub fn new() -> Self {
     RangeSet {
-      ranges: smallvec::SmallVec::new()
+      ranges: SmallVec::new()
     }
   }
 
@@ -167,15 +206,18 @@ impl <A, T> RangeSet <A> where
   #[inline]
   pub fn with_capacity (capacity : usize) -> Self {
     RangeSet {
-      ranges: smallvec::SmallVec::with_capacity (capacity)
+      ranges: SmallVec::with_capacity (capacity)
     }
   }
 
-  /// Returns a new range set if the given vector of ranges is valid
-  /// (`valid_range_vec`)
+  /// Returns a new range set if the given slice of ranges is valid and sorted
+  /// (`valid_range_slice`)
   #[inline]
-  pub fn from_ranges (ranges : smallvec::SmallVec <A>) -> Option <Self> {
-    if Self::valid_range_vec (&ranges) {
+  pub fn from_valid_ranges <V : AsRef <[RangeInclusive <T>]>> (ranges : V)
+    -> Option <Self>
+  {
+    if valid_range_slice (&ranges) {
+      let ranges = SmallVec::from (ranges.as_ref());
       Some (RangeSet { ranges })
     } else {
       None
@@ -196,7 +238,7 @@ impl <A, T> RangeSet <A> where
 
   /// Converts into the internal smallvec
   #[inline]
-  pub fn into_smallvec (self) -> smallvec::SmallVec <A> {
+  pub fn into_smallvec (self) -> SmallVec <A> {
     self.ranges
   }
 
@@ -216,7 +258,7 @@ impl <A, T> RangeSet <A> where
   /// assert!(s.insert (3));
   /// assert_eq!(s, RangeSet::from (3..=5));
   /// assert!(s.insert (10));
-  /// assert_eq!(s, RangeSet::from_ranges (vec![3..=5, 10..=10].into()).unwrap());
+  /// assert_eq!(s, RangeSet::from_valid_ranges ([3..=5, 10..=10]).unwrap());
   /// ```
   pub fn insert (&mut self, element : T) -> bool {
     if let Some (_) = self.insert_range (element..=element) {
@@ -234,15 +276,15 @@ impl <A, T> RangeSet <A> where
   /// # use std::ops::RangeInclusive;
   /// let mut s = RangeSet::<[RangeInclusive <u32>; 2]>::from (0..=5);
   /// assert!(s.remove (1));
-  /// assert_eq!(s, RangeSet::from_ranges (vec![0..=0, 2..=5].into()).unwrap());
+  /// assert_eq!(s, RangeSet::from_valid_ranges ([0..=0, 2..=5]).unwrap());
   /// assert!(!s.remove (1));
-  /// assert_eq!(s, RangeSet::from_ranges (vec![0..=0, 2..=5].into()).unwrap());
+  /// assert_eq!(s, RangeSet::from_valid_ranges ([0..=0, 2..=5]).unwrap());
   /// assert!(s.remove (4));
-  /// assert_eq!(s, RangeSet::from_ranges (vec![0..=0, 2..=3, 5..=5].into()).unwrap());
+  /// assert_eq!(s, RangeSet::from_valid_ranges ([0..=0, 2..=3, 5..=5]).unwrap());
   /// assert!(s.remove (3));
-  /// assert_eq!(s, RangeSet::from_ranges (vec![0..=0, 2..=2, 5..=5].into()).unwrap());
+  /// assert_eq!(s, RangeSet::from_valid_ranges ([0..=0, 2..=2, 5..=5]).unwrap());
   /// assert!(s.remove (2));
-  /// assert_eq!(s, RangeSet::from_ranges (vec![0..=0, 5..=5].into()).unwrap());
+  /// assert_eq!(s, RangeSet::from_valid_ranges ([0..=0, 5..=5]).unwrap());
   /// assert!(s.remove (0));
   /// assert_eq!(s, RangeSet::from (5..=5));
   /// assert!(s.remove (5));
@@ -369,9 +411,9 @@ impl <A, T> RangeSet <A> where
   /// # use std::ops::RangeInclusive;
   /// let mut s = RangeSet::<[RangeInclusive <u32>; 2]>::from (0..=5);
   /// assert_eq!(s.remove_range (3..=3), Some (RangeSet::from (3..=3)));
-  /// assert_eq!(s, RangeSet::from_ranges (vec![0..=2, 4..=5].into()).unwrap());
+  /// assert_eq!(s, RangeSet::from_valid_ranges ([0..=2, 4..=5]).unwrap());
   /// assert_eq!(s.remove_range (0..=10), Some (
-  ///   RangeSet::from_ranges (vec![0..=2, 4..=5].into()).unwrap()));
+  ///   RangeSet::from_valid_ranges ([0..=2, 4..=5]).unwrap()));
   /// assert!(s.is_empty());
   /// ```
   pub fn remove_range (&mut self, range : A::Item) -> Option <Self> {
@@ -456,44 +498,6 @@ impl <A, T> RangeSet <A> where
       range_index: 0,
       range:       T::one()..=T::zero()
     }
-  }
-
-  /// Tests a raw smallvec of ranges for validity as a range set: the element
-  /// ranges must be properly disjoint (not adjacent) and sorted.
-  ///
-  /// ```
-  /// # extern crate smallvec;
-  /// # extern crate range_set;
-  /// # use std::ops::RangeInclusive;
-  /// # use smallvec::SmallVec;
-  /// # use range_set::*;
-  /// # fn main() {
-  /// let mut v = SmallVec::<[RangeInclusive <u32>; 2]>::new();
-  /// assert!(RangeSet::valid_range_vec (&v));
-  /// v.push (0..=3);
-  /// assert!(RangeSet::valid_range_vec (&v));
-  /// v.push (6..=10);
-  /// assert!(RangeSet::valid_range_vec (&v));
-  /// v.push (0..=1);
-  /// assert!(!RangeSet::valid_range_vec (&v));
-  /// # }
-  /// ```
-  pub fn valid_range_vec (
-    ranges : &smallvec::SmallVec <A>
-  ) -> bool {
-    if !ranges.is_empty() {
-      for i in 0..ranges.len()-1 { // safe to subtract here since non-empty
-        let this = &ranges[i];
-        let next = &ranges[i+1];  // safe to index
-        if this.is_empty() || next.is_empty() {
-          return false
-        }
-        if *next.start() <= *this.end()+T::one() {
-          return false
-        }
-      }
-    }
-    true
   }
 
   /// Calls `spilled` on the underlying smallvec
@@ -637,18 +641,18 @@ impl <A, T> RangeSet <A> where
   /// exposed to the user.
   #[inline]
   fn is_valid (&self) -> bool {
-    Self::valid_range_vec (&self.ranges)
+    valid_range_slice (&self.ranges)
   }
 }
 
-impl <A, T> From <std::ops::RangeInclusive <T>> for RangeSet <A> where
-  A : smallvec::Array <Item=std::ops::RangeInclusive <T>>
+impl <A, T> From <RangeInclusive <T>> for RangeSet <A> where
+  A : smallvec::Array <Item=RangeInclusive <T>>
     + Eq + std::fmt::Debug,
   T : PrimInt + std::fmt::Debug
 {
-  fn from (range : std::ops::RangeInclusive <T>) -> Self {
+  fn from (range : RangeInclusive <T>) -> Self {
     let ranges = {
-      let mut v = smallvec::SmallVec::new();
+      let mut v = SmallVec::new();
       v.push (range);
       v
     };
@@ -656,21 +660,21 @@ impl <A, T> From <std::ops::RangeInclusive <T>> for RangeSet <A> where
   }
 }
 
-impl <A, T> AsRef <smallvec::SmallVec <A>> for RangeSet <A> where
-  A : smallvec::Array <Item=std::ops::RangeInclusive <T>>
+impl <A, T> AsRef <SmallVec <A>> for RangeSet <A> where
+  A : smallvec::Array <Item=RangeInclusive <T>>
     + Eq + std::fmt::Debug,
   T : PrimInt + std::fmt::Debug
 {
-  fn as_ref (&self) -> &smallvec::SmallVec <A> {
+  fn as_ref (&self) -> &SmallVec <A> {
     &self.ranges
   }
 }
 
 impl <'a, A, T> Iterator for Iter <'a, A, T> where
-  A : smallvec::Array <Item=std::ops::RangeInclusive <T>>
+  A : smallvec::Array <Item=RangeInclusive <T>>
     + Eq + std::fmt::Debug,
   T : PrimInt + std::fmt::Debug,
-  std::ops::RangeInclusive <T> : Clone + Iterator <Item=T>
+  RangeInclusive <T> : Clone + Iterator <Item=T>
 {
   type Item = T;
   fn next (&mut self) -> Option <Self::Item> {
@@ -691,7 +695,7 @@ impl <'a, A, T> Iterator for Iter <'a, A, T> where
 
 #[cfg(feature = "serde")]
 impl<A, T> serde::Serialize for RangeSet<A> where
-  A : smallvec::Array <Item=std::ops::RangeInclusive <T>>
+  A : smallvec::Array <Item=RangeInclusive <T>>
     + Eq + std::fmt::Debug,
   T : PrimInt + std::fmt::Debug + serde::Serialize,
 {
@@ -704,14 +708,14 @@ impl<A, T> serde::Serialize for RangeSet<A> where
 
 #[cfg(feature = "serde")]
 impl<'de, A, T> serde::Deserialize<'de> for RangeSet<A> where
-  A : smallvec::Array <Item=std::ops::RangeInclusive <T>>
+  A : smallvec::Array <Item=RangeInclusive <T>>
     + Eq + std::fmt::Debug,
   T : PrimInt + std::fmt::Debug + serde::Deserialize<'de>,
 {
   fn deserialize<D: serde::Deserializer<'de>>(deserializer: D)
     -> Result<Self, D::Error>
   {
-    let ranges = smallvec::SmallVec::deserialize(deserializer)?;
+    let ranges = SmallVec::deserialize(deserializer)?;
 
     Ok(Self {
       ranges
@@ -721,8 +725,8 @@ impl<'de, A, T> serde::Deserialize<'de> for RangeSet<A> where
 
 #[cfg(test)]
 mod tests {
-  use crate::RangeSet;
   use std::ops::RangeInclusive;
+  use crate::RangeSet;
 
   #[test]
   fn merge_multiple() {
