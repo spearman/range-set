@@ -1,6 +1,6 @@
 extern crate range_set;
 
-use range_set::RangeSet;
+use range_set::{range_set, RangeSet};
 use std::ops::RangeInclusive;
 
 fn main() {
@@ -60,4 +60,11 @@ fn main() {
   assert!(!s.spilled());
   let v : Vec <u32> = s.iter().collect();
   assert_eq!(v, vec![]);
+
+  let s = RangeSet::<[_; 4]>::from_ranges ([0..=3, 6..=10]);
+  println!("s: {:?}", s);
+  let s = range_set!(0..=3, 6..=10);
+  println!("s: {:?}", s);
+  let s = range_set!(0, 1, 2, 2, 3, 6, 7, 8, 8, 9, 10);
+  println!("s: {:?}", s);
 }

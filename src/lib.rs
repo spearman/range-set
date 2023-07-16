@@ -251,7 +251,7 @@ impl <A, T> RangeSet <A> where
     ret
   }
 
-  /// Constructs a new range set from an array or vector of numbers.
+  /// Constructs a new range set from a slice of numbers.
   ///
   /// This method has been specially optimized for deduplicated arrays, sorted
   /// in ascending order. Construction time is O(n) for these arrays.
@@ -263,19 +263,19 @@ impl <A, T> RangeSet <A> where
   /// let reference = range_set![1..=4, 6, 8..=10 ; 4];
   ///
   /// // Optimal ordering. Special O(n) applies.
-  /// let good = RangeSet::<[RangeInclusive<u8>; 4]>::from_array([1, 2, 3, 4, 6, 8, 9, 10]);
+  /// let good = RangeSet::<[RangeInclusive<u8>; 4]>::from_elements([1, 2, 3, 4, 6, 8, 9, 10]);
   ///
   /// // Random ordering. Very expensive.
-  /// let bad = RangeSet::<[RangeInclusive<u8>; 4]>::from_array([2, 9, 6, 8, 1, 4, 10, 3, 4, 8]);
+  /// let bad = RangeSet::<[RangeInclusive<u8>; 4]>::from_elements([2, 9, 6, 8, 1, 4, 10, 3, 4, 8]);
   ///
   /// assert_eq!(good, reference);
   /// assert_eq!(bad, reference);
   /// ```
-  pub fn from_array<V: AsRef<[T]>> (array: V) -> Self {
-    let mut current_range: Option<(T, T)> = None;
+  pub fn from_elements <V : AsRef <[T]>> (elements : V) -> Self {
+    let mut current_range : Option<(T, T)> = None;
     let mut set = Self::new();
 
-    for &element in array.as_ref() {
+    for &element in elements.as_ref() {
       // current_range is updated every iteration.
       current_range = if let Some((start, end)) = current_range {
         if element == end+T::one() {
@@ -831,7 +831,7 @@ pub const DEFAULT_RANGE_COUNT: usize = 4;
 ///
 /// Separately, the implementation guarantees `O(n)` construction time for lists
 /// of numbers (not ranges) sorted in increasing order and deduplicated. See
-/// `[RangeSet::from_array`] for more information about this optimization.
+/// `[RangeSet::from_elements`] for more information about this optimization.
 ///
 /// All other cases are reasonably performant, `O(n * log(n))` on average.
 /// ```
@@ -877,12 +877,12 @@ macro_rules! range_set {
     $crate::RangeSet::<[core::ops::RangeInclusive<_>; $len]>::new()
   };
 
-  // Pure number case: Use the faster `from_array` for just numbers, if possible.
+  // Pure number case: Use the faster `from_elements` for just numbers, if possible.
   ( $( $num:tt ),+ ) => {
     $crate::range_set![ $( $num ),+ ; $crate::DEFAULT_RANGE_COUNT ]
   };
   ( $( $num:tt ),+ ; $len:expr ) => {
-    $crate::RangeSet::<[core::ops::RangeInclusive<_>; $len]>::from_array([ $( $num ),+ ])
+    $crate::RangeSet::<[core::ops::RangeInclusive<_>; $len]>::from_elements([ $( $num ),+ ])
   };
 
   // Mixed literal cases: We can support mixing numbers and ranges IF everything is a literal
