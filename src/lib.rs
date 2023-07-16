@@ -6,8 +6,8 @@
 //! to the heap.
 
 extern crate num_traits;
-#[cfg(feature = "serde")]
-extern crate serde_crate as serde;
+#[cfg(feature = "derive_serdes")]
+extern crate serde;
 extern crate smallvec;
 
 pub mod range_compare;
@@ -56,7 +56,7 @@ use smallvec::SmallVec;
 /// assert!(!s.spilled());
 /// # }
 /// ```
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq)]
 pub struct RangeSet <A> where
   A       : smallvec::Array + Eq + std::fmt::Debug,
   A::Item : Clone + Eq + std::fmt::Debug
@@ -419,17 +419,18 @@ impl <A, T> RangeSet <A> where
   /// ```
   /// # use range_set::RangeSet;
   /// # use std::ops::RangeInclusive;
-  /// let mut s = RangeSet::<[RangeInclusive <u32>; 2]>::new();
+  /// type R = [RangeInclusive <u32>; 2];
+  /// let mut s = RangeSet::<R>::new();
   /// assert!(s.insert (4));
-  /// assert_eq!(s, RangeSet::from (4..=4));
+  /// assert_eq!(s, RangeSet::<R>::from (4..=4));
   /// assert!(!s.insert (4));
-  /// assert_eq!(s, RangeSet::from (4..=4));
+  /// assert_eq!(s, RangeSet::<R>::from (4..=4));
   /// assert!(s.insert (5));
-  /// assert_eq!(s, RangeSet::from (4..=5));
+  /// assert_eq!(s, RangeSet::<R>::from (4..=5));
   /// assert!(s.insert (3));
-  /// assert_eq!(s, RangeSet::from (3..=5));
+  /// assert_eq!(s, RangeSet::<R>::from (3..=5));
   /// assert!(s.insert (10));
-  /// assert_eq!(s, RangeSet::from_valid_ranges ([3..=5, 10..=10]).unwrap());
+  /// assert_eq!(s, RangeSet::<R>::from_ranges ([3..=5, 10..=10]));
   /// ```
   pub fn insert (&mut self, element : T) -> bool {
     if let Some (_) = self.insert_range (element..=element) {
@@ -445,19 +446,20 @@ impl <A, T> RangeSet <A> where
   /// ```
   /// # use range_set::RangeSet;
   /// # use std::ops::RangeInclusive;
-  /// let mut s = RangeSet::<[RangeInclusive <u32>; 2]>::from (0..=5);
+  /// type R = [RangeInclusive <u32>; 2];
+  /// let mut s = RangeSet::<R>::from (0..=5);
   /// assert!(s.remove (1));
-  /// assert_eq!(s, RangeSet::from_valid_ranges ([0..=0, 2..=5]).unwrap());
+  /// assert_eq!(s, RangeSet::<R>::from_ranges ([0..=0, 2..=5]));
   /// assert!(!s.remove (1));
-  /// assert_eq!(s, RangeSet::from_valid_ranges ([0..=0, 2..=5]).unwrap());
+  /// assert_eq!(s, RangeSet::<R>::from_ranges ([0..=0, 2..=5]));
   /// assert!(s.remove (4));
-  /// assert_eq!(s, RangeSet::from_valid_ranges ([0..=0, 2..=3, 5..=5]).unwrap());
+  /// assert_eq!(s, RangeSet::<R>::from_ranges ([0..=0, 2..=3, 5..=5]));
   /// assert!(s.remove (3));
-  /// assert_eq!(s, RangeSet::from_valid_ranges ([0..=0, 2..=2, 5..=5]).unwrap());
+  /// assert_eq!(s, RangeSet::<R>::from_ranges ([0..=0, 2..=2, 5..=5]));
   /// assert!(s.remove (2));
-  /// assert_eq!(s, RangeSet::from_valid_ranges ([0..=0, 5..=5]).unwrap());
+  /// assert_eq!(s, RangeSet::<R>::from_ranges ([0..=0, 5..=5]));
   /// assert!(s.remove (0));
-  /// assert_eq!(s, RangeSet::from (5..=5));
+  /// assert_eq!(s, RangeSet::<R>::from (5..=5));
   /// assert!(s.remove (5));
   /// assert!(s.is_empty());
   /// ```
@@ -598,9 +600,9 @@ impl <A, T> RangeSet <A> where
   /// # use std::ops::RangeInclusive;
   /// let mut s = RangeSet::<[RangeInclusive <u32>; 2]>::from (0..=5);
   /// assert_eq!(s.remove_range (3..=3), Some (RangeSet::from (3..=3)));
-  /// assert_eq!(s, RangeSet::from_valid_ranges ([0..=2, 4..=5]).unwrap());
-  /// assert_eq!(s.remove_range (0..=10), Some (
-  ///   RangeSet::from_valid_ranges ([0..=2, 4..=5]).unwrap()));
+  /// assert_eq!(s, RangeSet::<[_; 2]>::from_ranges ([0..=2, 4..=5]));
+  /// assert_eq!(s.remove_range (0..=10),
+  ///   Some (RangeSet::<[_; 2]>::from_ranges ([0..=2, 4..=5])));
   /// assert!(s.is_empty());
   /// ```
   pub fn remove_range (&mut self, range : A::Item) -> Option <Self> {
@@ -886,6 +888,20 @@ impl <A, T> AsRef <SmallVec <A>> for RangeSet <A> where
   }
 }
 
+/// This is a better PartialEq implementation than the derived one; it's
+/// generic over array sizes. Smallvec's array length should be an internal
+/// implementation detail, and shouldn't affect whether two RangeSets are
+/// equal.
+impl<A, B> PartialEq<RangeSet<B>> for RangeSet<A> where
+  A       : smallvec::Array + Eq + std::fmt::Debug,
+  A::Item : Clone + Eq + std::fmt::Debug,
+  B       : smallvec::Array<Item = A::Item> + Eq + std::fmt::Debug
+{
+  fn eq(&self, other : &RangeSet<B>) -> bool {
+    self.ranges.eq(&other.ranges)
+  }
+}
+
 impl <'a, A, T> Iterator for Iter <'a, A, T> where
   A : smallvec::Array <Item=RangeInclusive <T>>
     + Eq + std::fmt::Debug,
@@ -909,7 +925,7 @@ impl <'a, A, T> Iterator for Iter <'a, A, T> where
   }
 }
 
-#[cfg(feature = "serde")]
+#[cfg(feature = "derive_serdes")]
 impl<A, T> serde::Serialize for RangeSet<A> where
   A : smallvec::Array <Item=RangeInclusive <T>>
     + Eq + std::fmt::Debug,
@@ -922,7 +938,7 @@ impl<A, T> serde::Serialize for RangeSet<A> where
   }
 }
 
-#[cfg(feature = "serde")]
+#[cfg(feature = "derive_serdes")]
 impl<'de, A, T> serde::Deserialize<'de> for RangeSet<A> where
   A : smallvec::Array <Item=RangeInclusive <T>>
     + Eq + std::fmt::Debug,
