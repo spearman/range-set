@@ -102,7 +102,7 @@ pub fn valid_range_slice <T, V> (ranges : V) -> bool where
   V : AsRef <[RangeInclusive <T>]>
 {
   let ranges = ranges.as_ref();
-  if !ranges.as_ref().is_empty() {
+  if !ranges.is_empty() {
     for i in 0..ranges.len()-1 { // safe to subtract here since non-empty
       let this = &ranges[i];
       let next = &ranges[i+1];  // safe to index
@@ -210,9 +210,24 @@ impl <A, T> RangeSet <A> where
     }
   }
 
+  /// Returns a new range set if the given smallvec is valid and sorted
+  /// (`valid_range_slice`)
+  pub fn from_smallvec (ranges : SmallVec <A>) -> Option <Self> {
+    if valid_range_slice (ranges.as_slice()) {
+      Some (RangeSet { ranges })
+    } else {
+      None
+    }
+  }
+
+  /// Unchecked create from smallvec
+  pub unsafe fn from_raw_parts (ranges : SmallVec <A>) -> Self {
+    debug_assert!(valid_range_slice (ranges.as_slice()));
+    RangeSet { ranges }
+  }
+
   /// Returns a new range set if the given slice of ranges is valid and sorted
   /// (`valid_range_slice`)
-  #[inline]
   pub fn from_valid_ranges <V : AsRef <[RangeInclusive <T>]>> (ranges : V)
     -> Option <Self>
   {
@@ -228,9 +243,7 @@ impl <A, T> RangeSet <A> where
   ///
   /// This method has been specially optimized for non-overlapping, non-
   /// adjacent ranges in ascending order.
-  pub fn from_unsorted_ranges<V : AsRef <[RangeInclusive <T>]>> (ranges : V)
-    -> Self
-  {
+  pub fn from_ranges <V : AsRef <[RangeInclusive <T>]>> (ranges : V) -> Self {
     let mut ret = Self::new();
     for range in ranges.as_ref() {
       ret.insert_range_optimistic(range.clone());
@@ -812,7 +825,7 @@ pub const DEFAULT_RANGE_COUNT: usize = 4;
 ///
 /// The implementation guarantees `O(n)` construction time for lists of
 /// non-adjacent mix of increasing-ranges and numbers in increasing order. See
-/// [`RangeSet::from_unsorted_ranges`] for more information about this
+/// [`RangeSet::from_ranges`] for more information about this
 /// optimization.  Single numbers are transformed into one-element inclusive
 /// ranges (`5` becomes `5..=5`).
 ///
@@ -877,7 +890,7 @@ macro_rules! range_set {
     $crate::range_set![ $( $start $(..= $end )? ),+ ; $crate::DEFAULT_RANGE_COUNT ]
   };
   ( $( $start:tt $( ..= $end:tt )? $( as $range_keyword:tt )? ),+ ; $len:expr ) => {
-    $crate::RangeSet::<[core::ops::RangeInclusive<_>; $len]>::from_unsorted_ranges([ $( $crate::__range_set_helper!($start $( ..= $end )? $( as $range_keyword )? ) ),+ ])
+    $crate::RangeSet::<[core::ops::RangeInclusive<_>; $len]>::from_ranges([ $( $crate::__range_set_helper!($start $( ..= $end )? $( as $range_keyword )? ) ),+ ])
   };
 }
 
