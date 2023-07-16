@@ -224,6 +224,65 @@ impl <A, T> RangeSet <A> where
     }
   }
 
+  /// Constructs a new range set from an array or vector of inclusive ranges.
+  ///
+  /// This method has been specially optimized for non-overlapping, non-
+  /// adjacent ranges in ascending order.
+  pub fn from_unsorted_ranges<V : AsRef <[RangeInclusive <T>]>> (ranges : V)
+    -> Self
+  {
+    let mut ret = Self::new();
+    for range in ranges.as_ref() {
+      ret.insert_range_optimistic(range.clone());
+    }
+    ret
+  }
+
+  /// Constructs a new range set from an array or vector of numbers.
+  ///
+  /// This method has been specially optimized for deduplicated arrays, sorted
+  /// in ascending order. Construction time is O(n) for these arrays.
+  ///
+  /// ```
+  /// # use range_set::{RangeSet, range_set};
+  /// # use std::ops::RangeInclusive;
+  ///
+  /// let reference = range_set![1..=4, 6, 8..=10 ; 4];
+  ///
+  /// // Optimal ordering. Special O(n) applies.
+  /// let good = RangeSet::<[RangeInclusive<u8>; 4]>::from_array([1, 2, 3, 4, 6, 8, 9, 10]);
+  ///
+  /// // Random ordering. Very expensive.
+  /// let bad = RangeSet::<[RangeInclusive<u8>; 4]>::from_array([2, 9, 6, 8, 1, 4, 10, 3, 4, 8]);
+  ///
+  /// assert_eq!(good, reference);
+  /// assert_eq!(bad, reference);
+  /// ```
+  pub fn from_array<V: AsRef<[T]>> (array: V) -> Self {
+    let mut current_range: Option<(T, T)> = None;
+    let mut set = Self::new();
+
+    for &element in array.as_ref() {
+      // current_range is updated every iteration.
+      current_range = if let Some((start, end)) = current_range {
+        if element == end+T::one() {
+          Some((start, element))
+        } else {
+          set.insert_range_optimistic(start..=end);
+          Some((element, element))
+        }
+      } else {
+        Some((element, element))
+      };
+    }
+
+    if let Some((start, end)) = current_range {
+      set.insert_range_optimistic(start..=end);
+    }
+
+    set
+  }
+
   /// Check if range set is empty
   #[inline]
   pub fn is_empty (&self) -> bool {
@@ -403,6 +462,22 @@ impl <A, T> RangeSet <A> where
       }
     }
   } // end fn insert_range
+
+  /// This is like `insert_range`, but has O(1) runtime if `range` is placed at
+  /// the end of the set.
+  fn insert_range_optimistic (&mut self, range : A::Item) {
+    if let Some(last) = self.ranges.last() {
+      if *last.end()+T::one() < *range.start() {
+        self.ranges.push(range);
+      } else {
+        // Fallback on normal insert, and discard the return value.
+        self.insert_range(range);
+      }
+    } else {
+      // Ranges is empty.
+      self.ranges.push(range);
+    }
+  }
 
   /// Removes and returns the intersected elements, if there were any.
   ///
@@ -723,6 +798,99 @@ impl<'de, A, T> serde::Deserialize<'de> for RangeSet<A> where
   }
 }
 
+////////////////////////////////////////////////////////////////////////////////
+//  macros                                                                    //
+////////////////////////////////////////////////////////////////////////////////
+
+/// The default size of the inner smallvec's on-stack array.
+pub const DEFAULT_RANGE_COUNT: usize = 4;
+
+/// Convenient macro to construct RangeSets without needing bulky notation like
+/// `::<[RangeInclusive<_>; _]>`.  The macro allows a mix of numbers and
+/// inclusive ranges, with an optional length at the end for the smallvec array
+/// size. If the length is not specified, it will default to 4.
+///
+/// The implementation guarantees `O(n)` construction time for lists of
+/// non-adjacent mix of increasing-ranges and numbers in increasing order. See
+/// [`RangeSet::from_unsorted_ranges`] for more information about this
+/// optimization.  Single numbers are transformed into one-element inclusive
+/// ranges (`5` becomes `5..=5`).
+///
+/// Separately, the implementation guarantees `O(n)` construction time for lists
+/// of numbers (not ranges) sorted in increasing order and deduplicated. See
+/// `[RangeSet::from_array`] for more information about this optimization.
+///
+/// All other cases are reasonably performant, `O(n * log(n))` on average.
+/// ```
+/// # use range_set::{RangeSet, range_set};
+/// # use std::ops::RangeInclusive;
+///
+/// let case1 = RangeSet::<[RangeInclusive<u8>; 3]>::from_valid_ranges ([0..=0, 2..=5]).unwrap();
+/// let case2 = RangeSet::<[RangeInclusive<u8>; 4]>::from_valid_ranges ([1..=3, 6..=15, 40..=40, 42..=50]).unwrap();
+/// const FIVE: u8 = 5;
+/// let some_func = |x: u8| x;
+/// let your_var = 0;
+///
+/// // The fastest format to use is non-adjacent, increasing ranges in increasing order.
+/// assert_eq!(range_set![0, 2..=5; 3], case1);
+/// assert_eq!(range_set![1..=3, 6..=15, 40, 42..=50; 4], case2);
+///
+/// // The smallvec size is optional, and defaults to 4.
+/// assert_eq!(range_set![1..=3, 6..=15, 40, 42..=50], case2);
+///
+/// // A wide variety of other formats are available. Complex epressions need to be surrounded
+/// // by parentheses.
+/// assert_eq!(range_set![0, 2, 3..=5; 3], case1);
+/// assert_eq!(range_set![0, 2, (1 + 2), 4, FIVE; 3], case1);
+/// assert_eq!(range_set![0, 2, (some_func(3)), 4, 5; 3], case1);
+/// assert_eq!(range_set![your_var, 2..=(some_func(5)); 3], case1);
+///
+/// // Expressions that return ranges need to be marked using "as range":
+/// let my_range = 2..=5;
+/// assert_eq!(range_set![0, my_range as range; 3], case1);
+///
+/// // Empty lists are still allowed. Rust may have trouble inferring the number type/size
+/// // in some situations.
+/// assert_eq!(range_set![], RangeSet::<[RangeInclusive<u8>; 4]>::new());
+/// assert_eq!(range_set![; 3], RangeSet::<[RangeInclusive<u8>; 3]>::new());
+/// ```
+#[macro_export]
+macro_rules! range_set {
+  // Empty cases: use `new`
+  () => {
+    $crate::RangeSet::<[core::ops::RangeInclusive<_>; $crate::DEFAULT_RANGE_COUNT]>::new()
+  };
+  ( ; $len:expr ) => {
+    $crate::RangeSet::<[core::ops::RangeInclusive<_>; $len]>::new()
+  };
+
+  // Pure number case: Use the faster `from_array` for just numbers, if possible.
+  ( $( $num:tt ),+ ) => {
+    $crate::range_set![ $( $num ),+ ; $crate::DEFAULT_RANGE_COUNT ]
+  };
+  ( $( $num:tt ),+ ; $len:expr ) => {
+    $crate::RangeSet::<[core::ops::RangeInclusive<_>; $len]>::from_array([ $( $num ),+ ])
+  };
+
+  // Mixed literal cases: We can support mixing numbers and ranges IF everything is a literal
+  ( $( $start:tt $( ..= $end:tt )? $( as $range_keyword:tt )? ),+ ) => {
+    $crate::range_set![ $( $start $(..= $end )? ),+ ; $crate::DEFAULT_RANGE_COUNT ]
+  };
+  ( $( $start:tt $( ..= $end:tt )? $( as $range_keyword:tt )? ),+ ; $len:expr ) => {
+    $crate::RangeSet::<[core::ops::RangeInclusive<_>; $len]>::from_unsorted_ranges([ $( $crate::__range_set_helper!($start $( ..= $end )? $( as $range_keyword )? ) ),+ ])
+  };
+}
+
+/// Helper macro that resolves the ambiguity between literal numbers and literal
+/// ranges.
+#[macro_export]
+#[doc(hidden)]
+macro_rules! __range_set_helper {
+  ( $num:tt ) => { { let val = $num; val ..= val } };
+  ( $start:tt ..= $end:tt ) => ( $start ..= $end );
+  ( $range_expr:tt as range) => ( $range_expr );
+}
+
 #[cfg(test)]
 mod tests {
   use std::ops::RangeInclusive;
@@ -802,5 +970,74 @@ mod tests {
     );
 
     assert_eq!(range_set.ranges.into_vec(), vec!(1..=1, 3..=7, 9..=9));
+  }
+
+  #[test]
+  fn test_range_set_macro_empty() {
+    assert_eq!(range_set![; 3], RangeSet::<[RangeInclusive<u8>; 3]>::new());
+    assert_eq!(range_set![], RangeSet::<[RangeInclusive<u8>; 4]>::new());
+  }
+
+  // This allow is needed due to a rust linting bug: https://github.com/rust-lang/rust/issues/113563
+  #[allow(unused_parens)]
+  #[test]
+  fn test_range_set_macro_nums() {
+    let case1 = RangeSet::<[RangeInclusive<u8>; 3]>::from_valid_ranges (
+      [0..=0, 2..=5]
+    ).unwrap();
+    let case2 = RangeSet::<[RangeInclusive<u8>; 4]>::from_valid_ranges (
+      [1..=3, 6..=6, 8..=10]
+    ).unwrap();
+    const SOME_CONST: u8 = 5;
+    let not_token_tree = |x: u8| x;
+
+    // All values
+    assert_eq!(range_set![0, 2, 3, 4, 5; 3], case1);
+    assert_eq!(range_set![0, 2, (1 + 2), 4, SOME_CONST; 3], case1);
+    assert_eq!(range_set![0, 2, (not_token_tree(3)), 4, 5; 3], case1);
+
+    assert_eq!(range_set![1, 2, 3, 6, 8, 9, 10; 4], case2);
+    assert_eq!(range_set![1, 2, 3, (3 * 2), 8, 9, 10], case2);
+
+    let mut counter = 0;
+    let mut call_only_once = |x: u8| { counter += 1; x };
+    assert_eq!(range_set![0, 2, (call_only_once(3)), 4, 5; 3], case1);
+    assert_eq!(counter, 1);
+  }
+
+  // This allow is needed due to a rust linting bug: https://github.com/rust-lang/rust/issues/113563
+  #[allow(unused_parens)]
+  #[test]
+  fn test_range_set_macro_mixed() {
+    let case1 = RangeSet::<[RangeInclusive<u8>; 3]>::from_valid_ranges (
+      [0..=0, 2..=5]
+    ).unwrap();
+    let case2 = RangeSet::<[RangeInclusive<u8>; 4]>::from_valid_ranges (
+      [1..=3, 6..=15, 40..=40, 42..=50]
+    ).unwrap();
+    const SOME_CONST: u8 = 40;
+    let not_token_tree = |x: u8| x;
+
+    assert_eq!(range_set![0, 2..=5; 3], case1);
+    assert_eq!(range_set![0, (not_token_tree(2))..=5; 3], case1);
+
+    assert_eq!(range_set![1..=3, 6..=15, 40, 42..=50; 4], case2);
+    assert_eq!(range_set![1, 2, 3, 6..=15, 40, 42..=50], case2);
+    assert_eq!(range_set![1..=3, (3+3)..=15, SOME_CONST, 42..=50; 4], case2);
+    assert_eq!(range_set![1..=3, 6..=15, 40..=40, (not_token_tree(42))..=50; 4], case2);
+
+    let mut counter = 0;
+    let mut call_only_once = |x: u8| { counter += 1; x };
+    assert_eq!(range_set![1..=3, 6..=15, (call_only_once(40)), 42..=50; 4], case2);
+    assert_eq!(counter, 1);
+
+    assert_eq!(range_set![0, 2, 3, 5; 8],
+      RangeSet::<[RangeInclusive<u8>; 8]>::from_valid_ranges (
+        [0..=0, 2..=3, 5..=5]
+      ).unwrap());
+    assert_eq!(range_set![0..=0, 2..=2, (not_token_tree(4) + 1)..=5],
+      RangeSet::<[RangeInclusive<u8>; 4]>::from_valid_ranges (
+        [0..=0, 2..=2, 5..=5]
+      ).unwrap());
   }
 }
