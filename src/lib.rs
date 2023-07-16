@@ -263,10 +263,10 @@ impl <A, T> RangeSet <A> where
   /// let reference = range_set![1..=4, 6, 8..=10 ; 4];
   ///
   /// // Optimal ordering. Special O(n) applies.
-  /// let good = RangeSet::<[RangeInclusive<u8>; 4]>::from_elements([1, 2, 3, 4, 6, 8, 9, 10]);
+  /// let good = RangeSet::<[RangeInclusive<u32>; 4]>::from_elements([1, 2, 3, 4, 6, 8, 9, 10]);
   ///
   /// // Random ordering. Very expensive.
-  /// let bad = RangeSet::<[RangeInclusive<u8>; 4]>::from_elements([2, 9, 6, 8, 1, 4, 10, 3, 4, 8]);
+  /// let bad = RangeSet::<[RangeInclusive<u32>; 4]>::from_elements([2, 9, 6, 8, 1, 4, 10, 3, 4, 8]);
   ///
   /// assert_eq!(good, reference);
   /// assert_eq!(bad, reference);
@@ -982,10 +982,10 @@ pub const DEFAULT_RANGE_COUNT: usize = 4;
 /// # use range_set::{RangeSet, range_set};
 /// # use std::ops::RangeInclusive;
 ///
-/// let case1 = RangeSet::<[RangeInclusive<u8>; 3]>::from_valid_ranges ([0..=0, 2..=5]).unwrap();
-/// let case2 = RangeSet::<[RangeInclusive<u8>; 4]>::from_valid_ranges ([1..=3, 6..=15, 40..=40, 42..=50]).unwrap();
-/// const FIVE: u8 = 5;
-/// let some_func = |x: u8| x;
+/// let case1 = RangeSet::<[RangeInclusive<u32>; 3]>::from_valid_ranges ([0..=0, 2..=5]).unwrap();
+/// let case2 = RangeSet::<[RangeInclusive<u32>; 4]>::from_valid_ranges ([1..=3, 6..=15, 40..=40, 42..=50]).unwrap();
+/// const FIVE: u32 = 5;
+/// let some_func = |x: u32| x;
 /// let your_var = 0;
 ///
 /// // The fastest format to use is non-adjacent, increasing ranges in increasing order.
@@ -1008,8 +1008,8 @@ pub const DEFAULT_RANGE_COUNT: usize = 4;
 ///
 /// // Empty lists are still allowed. Rust may have trouble inferring the number type/size
 /// // in some situations.
-/// assert_eq!(range_set![], RangeSet::<[RangeInclusive<u8>; 4]>::new());
-/// assert_eq!(range_set![; 3], RangeSet::<[RangeInclusive<u8>; 3]>::new());
+/// assert_eq!(range_set![], RangeSet::<[RangeInclusive<u32>; 4]>::new());
+/// assert_eq!(range_set![; 3], RangeSet::<[RangeInclusive<u32>; 3]>::new());
 /// ```
 #[macro_export]
 macro_rules! range_set {
