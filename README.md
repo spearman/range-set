@@ -9,7 +9,7 @@ A generic `smallvec::Array` parameter allows choosing how many ranges will fit
 on the stack before spilling over onto the heap:
 
 ```rust
-let mut s = RangeSet::<[RangeInclusive <u32>; 1]>::from (0..=2);
+let mut s = range_set![0..=2; 1];
 println!("s: {:?}", s);
 assert!(!s.spilled());
 
@@ -19,7 +19,8 @@ assert!(s.spilled());
 let v : Vec <u32> = s.iter().collect();
 assert_eq!(v, vec![0,1,2,8,9,10]);
 
-assert_eq!(s.insert_range (3..=12), Some (RangeSet::from (8..=10)));
+assert_eq!(s.insert_range (3..=12), Some (range_set![8..=10; 1]));
+s.shrink_to_fit();
 println!("s: {:?}", s);
 assert!(!s.spilled());
 let v : Vec <u32> = s.iter().collect();
@@ -32,19 +33,11 @@ be traversed in-order.
 ## Usage
 
 ```rust
-  use range_set::RangeSet;
-  use std::ops::RangeInclusive;
-  let mut s = RangeSet::<[RangeInclusive <u32>; 2]>::from_ranges (vec![
-    1..=100,
-    500..=1000
-  ].into()).unwrap();
+  use range_set::{range_set, RangeSet};
+  let mut s = RangeSet::<[_; 2]>::from_ranges ([1..=100, 500..=1000]);
   s.insert (200);
-  s.insert (400..=499);
-  assert_eq!(s, RangeSet::from_ranges (vec![
-    1..=100,
-    200..=200,
-    400..=1000
-  ].into()).unwrap());
+  s.insert_range (400..=499);
+  assert_eq!(s, range_set![1..=100, 200..=200, 400..=1000]);
 ```
 
 See `./examples/example.rs` and documentation for more examples.
