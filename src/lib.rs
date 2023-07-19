@@ -31,30 +31,21 @@ use smallvec::SmallVec;
 /// backing `SmallVec` storage.
 ///
 /// ```
-/// # extern crate smallvec;
-/// # extern crate range_set;
-/// # use range_set::RangeSet;
-/// # use smallvec::SmallVec;
-/// # use std::ops::RangeInclusive;
-/// # fn main() {
-/// let mut s = RangeSet::<[RangeInclusive <u32>; 1]>::from (0..=2);
-/// println!("s: {:?}", s);
+/// # use range_set::range_set;
+/// let mut s = range_set![0..=2; 1];
 /// assert!(!s.spilled());
 ///
-/// assert!(s.insert_range (8..=10).is_none());
-/// println!("s: {:?}", s);
+/// assert_eq!(s.insert_range (8..=10), None);
+/// assert_eq!(s, range_set![0..=2, 8..=10]);
 /// assert!(s.spilled());
-/// let v : Vec <u32> = s.iter().collect();
-/// assert_eq!(v, vec![0,1,2,8,9,10]);
 ///
-/// assert_eq!(s.insert_range (3..=12), Some (RangeSet::from (8..=10)));
-/// println!("s: {:?}", s);
+/// assert_eq!(s.insert_range (3..=12), Some (range_set![8..=10; 1]));
+/// assert_eq!(s, range_set![0..=12]);
 /// assert!(s.spilled());  // once spilled, stays spilled
-/// let v : Vec <u32> = s.iter().collect();
-/// assert_eq!(v, vec![0,1,2,3,4,5,6,7,8,9,10,11,12]);
+/// 
 /// s.shrink_to_fit();  // manually un-spill
+/// assert_eq!(s, range_set![0..=12]);
 /// assert!(!s.spilled());
-/// # }
 /// ```
 #[derive(Clone, Debug, Eq)]
 pub struct RangeSet <A> where
@@ -82,11 +73,7 @@ pub struct Iter <'a, A, T> where
 /// must be properly disjoint (not adjacent) and sorted.
 ///
 /// ```
-/// # extern crate smallvec;
-/// # extern crate range_set;
-/// # use std::ops::RangeInclusive;
-/// # use range_set::*;
-/// # fn main() {
+/// # use range_set::valid_range_slice;
 /// let mut v = Vec::new();
 /// assert!(valid_range_slice (&v));
 /// v.push (0..=3);
@@ -95,7 +82,6 @@ pub struct Iter <'a, A, T> where
 /// assert!(valid_range_slice (&v));
 /// v.push (0..=1);
 /// assert!(!valid_range_slice (&v));
-/// # }
 /// ```
 pub fn valid_range_slice <T, V> (ranges : V) -> bool where
   T : PartialOrd + PrimInt,
@@ -194,6 +180,14 @@ impl <A, T> RangeSet <A> where
   T : PrimInt + std::fmt::Debug
 {
   /// New empty range set
+  /// 
+  /// ```
+  /// # use range_set::{RangeSet, range_set};
+  /// # use std::ops::RangeInclusive;
+  /// 
+  /// let s = RangeSet::<[RangeInclusive<u32>; 2]>::new();
+  /// assert_eq!(s, range_set![; 2]);
+  /// ```
   #[inline]
   pub fn new() -> Self {
     RangeSet {
@@ -203,6 +197,14 @@ impl <A, T> RangeSet <A> where
 
   /// New empty range set with the internal smallvec initialized with the given
   /// initial capacity
+  /// 
+  /// ```
+  /// # use range_set::{RangeSet, range_set};
+  /// # use std::ops::RangeInclusive;
+  /// 
+  /// let s = RangeSet::<[RangeInclusive<u32>; 2]>::with_capacity(50);
+  /// assert_eq!(s, range_set![; 2]);
+  /// ```
   #[inline]
   pub fn with_capacity (capacity : usize) -> Self {
     RangeSet {
@@ -210,8 +212,24 @@ impl <A, T> RangeSet <A> where
     }
   }
 
-  /// Returns a new range set if the given smallvec is valid and sorted
-  /// (`valid_range_slice`)
+  /// Returns a new range set if the given smallvec is valid and sorted.
+  /// (See [`valid_range_slice`])
+  /// 
+  /// ```
+  /// # extern crate smallvec;
+  /// # use range_set::{RangeSet, range_set};
+  /// # use smallvec::SmallVec;
+  /// # use std::ops::RangeInclusive;
+  /// 
+  /// let v: SmallVec<[RangeInclusive<u32>; 5]> = SmallVec::from_vec(vec![5..=10, 12..=12]);
+  /// assert_eq!(RangeSet::from_smallvec(v), Some(range_set![5..=10, 12; 5]));
+  /// 
+  /// let v: SmallVec<[RangeInclusive<u32>; 5]> = SmallVec::from_vec(vec![5..=10, 2..=3, 12..=12]);
+  /// assert_eq!(RangeSet::from_smallvec(v), None);
+  /// 
+  /// let v: SmallVec<[RangeInclusive<u32>; 5]> = SmallVec::from_vec(vec![5..=10, 11..=12]);
+  /// assert_eq!(RangeSet::from_smallvec(v), None);
+  /// ```
   pub fn from_smallvec (ranges : SmallVec <A>) -> Option <Self> {
     if valid_range_slice (ranges.as_slice()) {
       Some (RangeSet { ranges })
@@ -220,14 +238,14 @@ impl <A, T> RangeSet <A> where
     }
   }
 
-  /// Unchecked create from smallvec
+  /// Unchecked version of [`from_smallvec`](Self::from_smallvec)
   pub unsafe fn from_raw_parts (ranges : SmallVec <A>) -> Self {
     debug_assert!(valid_range_slice (ranges.as_slice()));
     RangeSet { ranges }
   }
 
   /// Returns a new range set if the given slice of ranges is valid and sorted
-  /// (`valid_range_slice`)
+  /// (See [`valid_range_slice`])
   pub fn from_valid_ranges <V : AsRef <[RangeInclusive <T>]>> (ranges : V)
     -> Option <Self>
   {
@@ -242,7 +260,7 @@ impl <A, T> RangeSet <A> where
   /// Constructs a new range set from an array or vector of inclusive ranges.
   ///
   /// This method has been specially optimized for non-overlapping, non-
-  /// adjacent ranges in ascending order.
+  /// adjacent ranges in ascending order. See [`valid_range_slice`].
   pub fn from_ranges <V : AsRef <[RangeInclusive <T>]>> (ranges : V) -> Self {
     let mut ret = Self::new();
     for range in ranges.as_ref() {
@@ -254,13 +272,13 @@ impl <A, T> RangeSet <A> where
   /// Constructs a new range set from a slice of numbers.
   ///
   /// This method has been specially optimized for deduplicated arrays, sorted
-  /// in ascending order. Construction time is O(n) for these arrays.
+  /// in ascending order. Construction time is `O(n)` for these arrays.
   ///
   /// ```
   /// # use range_set::{RangeSet, range_set};
   /// # use std::ops::RangeInclusive;
   ///
-  /// let reference = range_set![1..=4, 6, 8..=10 ; 4];
+  /// let reference = range_set![1..=4, 6, 8..=10];
   ///
   /// // Optimal ordering. Special O(n) applies.
   /// let good = RangeSet::<[RangeInclusive<u32>; 4]>::from_elements([1, 2, 3, 4, 6, 8, 9, 10]);
@@ -317,13 +335,8 @@ impl <A, T> RangeSet <A> where
   /// Returns true if the element is contained in this set.
   ///
   /// ```
-  /// # use range_set::RangeSet;
-  /// # use std::ops::RangeInclusive;
-  /// let mut set = RangeSet::<[RangeInclusive <u32>; 4]>::new();
-  /// set.insert_range(2..=5);
-  /// set.insert_range(10..=70);
-  /// set.insert(72);
-  /// set.insert_range(74..=80);
+  /// # use range_set::range_set;
+  /// let mut set = range_set![2..=5, 10..=70, 72, 74..=80];
   ///
   /// assert!(set.contains(2));
   /// assert!(set.contains(3));
@@ -343,13 +356,8 @@ impl <A, T> RangeSet <A> where
   /// Returns true if all the elements of `range` are contained in this set.
   ///
   /// ```
-  /// # use range_set::RangeSet;
-  /// # use std::ops::RangeInclusive;
-  /// let mut set = RangeSet::<[RangeInclusive <u32>; 4]>::new();
-  /// set.insert_range(2..=5);
-  /// set.insert_range(10..=70);
-  /// set.insert(72);
-  /// set.insert_range(74..=80);
+  /// # use range_set::range_set;
+  /// let mut set = range_set![2..=5, 10..=70, 72, 74..=80];
   ///
   /// assert!(set.contains_range(2..=4));
   /// assert!(set.contains_range(3..=5));
@@ -371,15 +379,13 @@ impl <A, T> RangeSet <A> where
   /// at least all the elements in `other`.
   ///
   /// ```
-  /// # use range_set::RangeSet;
-  /// # use std::ops::RangeInclusive;
+  /// # use range_set::range_set;
   ///
-  /// let main = RangeSet::<[RangeInclusive<u32>; 1]>::from(3..=15);
-  /// let mut superset = RangeSet::from(0..=15);
+  /// let main = range_set![3..=15];
   ///
-  /// assert!(superset.is_superset(&main));
-  /// superset.remove(8);
-  /// assert!(!superset.is_superset(&main));
+  /// assert_eq!(range_set![0..=15].is_superset(&main), true);
+  /// assert_eq!(main.is_superset(&main), true);
+  /// assert_eq!(range_set![0..=7, 9..=15].is_superset(&main), false);
   /// ```
   pub fn is_superset (&self, other : &Self) -> bool {
     other.is_subset(self)
@@ -389,26 +395,44 @@ impl <A, T> RangeSet <A> where
   /// at least all the elements in `self`.
   ///
   /// ```
-  /// # use range_set::RangeSet;
-  /// # use std::ops::RangeInclusive;
+  /// # use range_set::range_set;
   ///
-  /// let main = RangeSet::<[RangeInclusive<u32>; 1]>::from(3..=15);
-  /// let mut subset = RangeSet::from(6..=10);
+  /// let main = range_set![3..=15];
   ///
-  /// assert!(subset.is_subset(&main));
-  /// subset.insert(99);
-  /// assert!(!subset.is_subset(&main));
+  /// assert_eq!(range_set![6..=10].is_subset(&main), true);
+  /// assert_eq!(main.is_subset(&main), true);
+  /// assert_eq!(range_set![6..=10, 99].is_subset(&main), false);
   /// ```
   pub fn is_subset (&self, other : &Self) -> bool {
     self.ranges.iter().all(|range| other.contains_range_ref (range))
   }
 
   /// Returns the largest element in the set, or `None` if the set is empty.
+  /// 
+  /// ```
+  /// # use range_set::{range_set, RangeSet};
+  /// # use std::ops::RangeInclusive;
+  /// 
+  /// assert_eq!(range_set![5..=8].max(), Some(8));
+  /// assert_eq!(range_set![2..=3, 5..=8].max(), Some(8));
+  /// assert_eq!(range_set![5..=8, 10].max(), Some(10));
+  /// assert_eq!(RangeSet::<[RangeInclusive<u32>; 4]>::new().max(), None);
+  /// ```
   pub fn max (&self) -> Option <T> {
     self.ranges.last().map(|r| *r.end())
   }
 
   /// Returns the smallest element in the set, or `None` if the set is empty.
+  /// 
+  /// ```
+  /// # use range_set::{RangeSet, range_set};
+  /// # use std::ops::RangeInclusive;
+  /// 
+  /// assert_eq!(range_set![5..=8].min(), Some(5));
+  /// assert_eq!(range_set![2..=3, 5..=8].min(), Some(2));
+  /// assert_eq!(range_set![5..=8, 10].min(), Some(5));
+  /// assert_eq!(RangeSet::<[RangeInclusive<u32>; 4]>::new().min(), None);
+  /// ```
   pub fn min (&self) -> Option <T> {
     self.ranges.first().map(|r| *r.start())
   }
@@ -417,20 +441,20 @@ impl <A, T> RangeSet <A> where
   /// or else false if it was already present
   ///
   /// ```
-  /// # use range_set::RangeSet;
+  /// # use range_set::{RangeSet, range_set};
   /// # use std::ops::RangeInclusive;
-  /// type R = [RangeInclusive <u32>; 2];
-  /// let mut s = RangeSet::<R>::new();
+  /// 
+  /// let mut s = RangeSet::<[RangeInclusive <u32>; 2]>::new();
   /// assert!(s.insert (4));
-  /// assert_eq!(s, RangeSet::<R>::from (4..=4));
+  /// assert_eq!(s, range_set![4..=4]);
   /// assert!(!s.insert (4));
-  /// assert_eq!(s, RangeSet::<R>::from (4..=4));
+  /// assert_eq!(s, range_set![4..=4]);
   /// assert!(s.insert (5));
-  /// assert_eq!(s, RangeSet::<R>::from (4..=5));
+  /// assert_eq!(s, range_set![4..=5]);
   /// assert!(s.insert (3));
-  /// assert_eq!(s, RangeSet::<R>::from (3..=5));
+  /// assert_eq!(s, range_set![3..=5]);
   /// assert!(s.insert (10));
-  /// assert_eq!(s, RangeSet::<R>::from_ranges ([3..=5, 10..=10]));
+  /// assert_eq!(s, range_set![3..=5, 10..=10]);
   /// ```
   pub fn insert (&mut self, element : T) -> bool {
     if let Some (_) = self.insert_range (element..=element) {
@@ -444,22 +468,21 @@ impl <A, T> RangeSet <A> where
   /// or else false if it was not present
   ///
   /// ```
-  /// # use range_set::RangeSet;
+  /// # use range_set::{RangeSet, range_set};
   /// # use std::ops::RangeInclusive;
-  /// type R = [RangeInclusive <u32>; 2];
-  /// let mut s = RangeSet::<R>::from (0..=5);
+  /// let mut s = RangeSet::<[RangeInclusive <u32>; 2]>::from (0..=5);
   /// assert!(s.remove (1));
-  /// assert_eq!(s, RangeSet::<R>::from_ranges ([0..=0, 2..=5]));
+  /// assert_eq!(s, range_set![0..=0, 2..=5]);
   /// assert!(!s.remove (1));
-  /// assert_eq!(s, RangeSet::<R>::from_ranges ([0..=0, 2..=5]));
+  /// assert_eq!(s, range_set![0..=0, 2..=5]);
   /// assert!(s.remove (4));
-  /// assert_eq!(s, RangeSet::<R>::from_ranges ([0..=0, 2..=3, 5..=5]));
+  /// assert_eq!(s, range_set![0..=0, 2..=3, 5..=5]);
   /// assert!(s.remove (3));
-  /// assert_eq!(s, RangeSet::<R>::from_ranges ([0..=0, 2..=2, 5..=5]));
+  /// assert_eq!(s, range_set![0..=0, 2..=2, 5..=5]);
   /// assert!(s.remove (2));
-  /// assert_eq!(s, RangeSet::<R>::from_ranges ([0..=0, 5..=5]));
+  /// assert_eq!(s, range_set![0..=0, 5..=5]);
   /// assert!(s.remove (0));
-  /// assert_eq!(s, RangeSet::<R>::from (5..=5));
+  /// assert_eq!(s, range_set![5..=5]);
   /// assert!(s.remove (5));
   /// assert!(s.is_empty());
   /// ```
@@ -475,11 +498,13 @@ impl <A, T> RangeSet <A> where
   /// with the curret range set.
   ///
   /// ```
-  /// # use range_set::RangeSet;
+  /// # use range_set::{RangeSet, range_set};
   /// # use std::ops::RangeInclusive;
   /// let mut s = RangeSet::<[RangeInclusive <u32>; 2]>::from (0..=5);
-  /// assert_eq!(s.insert_range ( 3..=10), Some (RangeSet::from (3..=5)));
+  /// assert_eq!(s.insert_range ( 3..=10), Some (range_set![3..=5; 2]));
+  /// assert_eq!(s, range_set![0..=10]);
   /// assert_eq!(s.insert_range (20..=30), None);
+  /// assert_eq!(s, range_set![0..=10, 20..=30]);
   /// ```
   pub fn insert_range (&mut self, range : A::Item) -> Option <Self> {
     if range.is_empty () {       // empty range
@@ -596,13 +621,12 @@ impl <A, T> RangeSet <A> where
   /// Removes and returns the intersected elements, if there were any.
   ///
   /// ```
-  /// # use range_set::RangeSet;
+  /// # use range_set::{RangeSet, range_set};
   /// # use std::ops::RangeInclusive;
   /// let mut s = RangeSet::<[RangeInclusive <u32>; 2]>::from (0..=5);
-  /// assert_eq!(s.remove_range (3..=3), Some (RangeSet::from (3..=3)));
-  /// assert_eq!(s, RangeSet::<[_; 2]>::from_ranges ([0..=2, 4..=5]));
-  /// assert_eq!(s.remove_range (0..=10),
-  ///   Some (RangeSet::<[_; 2]>::from_ranges ([0..=2, 4..=5])));
+  /// assert_eq!(s.remove_range (3..=3), Some (range_set![3; 2]));
+  /// assert_eq!(s, range_set![0..=2, 4..=5]);
+  /// assert_eq!(s.remove_range (0..=10), Some (range_set![0..=2, 4..=5; 2]));
   /// assert!(s.is_empty());
   /// ```
   pub fn remove_range (&mut self, range : A::Item) -> Option <Self> {
@@ -681,6 +705,23 @@ impl <A, T> RangeSet <A> where
   ///
   /// To iterate over individual ranges, use `range_set.as_ref().iter()`
   /// instead.
+  /// 
+  /// ```
+  /// # use range_set::range_set;
+  /// 
+  /// let mut test_set = range_set![3u32..=6, 9, 22..=25];
+  /// let elements: Vec<_> = test_set.iter().collect();
+  /// assert_eq!(elements, vec![3, 4, 5, 6, 9, 22, 23, 24, 25]);
+  /// let ranges: Vec<_> = test_set.as_ref().iter().map(|r| r.clone()).collect();
+  /// assert_eq!(ranges, vec![3..=6, 9..=9, 22..=25]);
+  /// 
+  /// test_set.insert_range(7..=10);
+  /// let elements: Vec<_> = test_set.iter().collect();
+  /// assert_eq!(elements, vec![3u32, 4, 5, 6, 7, 8, 9, 10, 22, 23, 24, 25]);
+  /// let ranges: Vec<_> = test_set.as_ref().iter().map(|r| r.clone()).collect();
+  /// assert_eq!(ranges, vec![3u32..=10, 22..=25]);
+  /// 
+  /// ```
   pub fn iter (&self) -> Iter <A, T> {
     Iter {
       range_set:   self,
@@ -689,13 +730,51 @@ impl <A, T> RangeSet <A> where
     }
   }
 
-  /// Calls `spilled` on the underlying smallvec
+  /// Calls `spilled` on the underlying smallvec. See [`smallvec::SmallVec::spilled`].
+  /// 
+  /// ```
+  /// # use range_set::range_set;
+  /// 
+  /// let mut s = range_set![0..=2; 1];
+  /// assert!(!s.spilled());
+  ///
+  /// assert_eq!(s.insert_range (8..=10), None);
+  /// assert_eq!(s, range_set![0..=2, 8..=10]);
+  /// assert!(s.spilled());
+  ///
+  /// assert_eq!(s.insert_range (3..=12), Some (range_set![8..=10; 1]));
+  /// assert_eq!(s, range_set![0..=12]);
+  /// assert!(s.spilled());  // once spilled, stays spilled
+  /// 
+  /// s.shrink_to_fit();  // manually un-spill
+  /// assert_eq!(s, range_set![0..=12]);
+  /// assert!(!s.spilled());
+  /// ```
   #[inline]
   pub fn spilled (&self) -> bool {
     self.ranges.spilled()
   }
 
-  /// Calls `shrink_to_fit` on the underlying smallvec
+  /// Calls `shrink_to_fit` on the underlying smallvec. See [`smallvec::SmallVec::shrink_to_fit`].
+  /// 
+  /// ```
+  /// # use range_set::range_set;
+  /// 
+  /// let mut s = range_set![0..=2; 1];
+  /// assert!(!s.spilled());
+  ///
+  /// assert_eq!(s.insert_range (8..=10), None);
+  /// assert_eq!(s, range_set![0..=2, 8..=10]);
+  /// assert!(s.spilled());
+  ///
+  /// assert_eq!(s.insert_range (3..=12), Some (range_set![8..=10; 1]));
+  /// assert_eq!(s, range_set![0..=12]);
+  /// assert!(s.spilled());  // once spilled, stays spilled
+  /// 
+  /// s.shrink_to_fit();  // manually un-spill
+  /// assert_eq!(s, range_set![0..=12]);
+  /// assert!(!s.spilled());
+  /// ```
   #[inline]
   pub fn shrink_to_fit (&mut self) {
     self.ranges.shrink_to_fit()
@@ -888,10 +967,6 @@ impl <A, T> AsRef <SmallVec <A>> for RangeSet <A> where
   }
 }
 
-/// This is a better PartialEq implementation than the derived one; it's
-/// generic over array sizes. Smallvec's array length should be an internal
-/// implementation detail, and shouldn't affect whether two RangeSets are
-/// equal.
 impl<A, B> PartialEq<RangeSet<B>> for RangeSet<A> where
   A       : smallvec::Array + Eq + std::fmt::Debug,
   A::Item : Clone + Eq + std::fmt::Debug,
