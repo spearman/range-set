@@ -67,4 +67,20 @@ fn main() {
   println!("s: {:?}", s);
   let s = range_set!(0, 1, 2, 2, 3, 6, 7, 8, 8, 9, 10);
   println!("s: {:?}", s);
+  let s = range_set![0..=(u32::MAX)];
+  println!("s: {:?}", s);
+  let mut s = range_set![];
+  s.insert_range(0..=u32::MAX);
+  s.insert_range(0..=0);
+  println!("s: {:?}", s);
+  let mut s = range_set![];
+  s.insert_range(0..=0);
+  s.insert_range(0..=u32::MAX);
+  println!("s: {:?}", s);
+  let mut s = range_set![250..=(u8::MAX)];
+  println!("s: {:?}", s);
+  s.remove_range (252..=253);
+  s.remove_range (254..=254);
+  s.remove_range (255..=255);
+  println!("s: {:?}", s);
 }

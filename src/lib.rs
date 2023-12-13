@@ -93,6 +93,8 @@ pub struct Iter <'a, A, T> where
 /// assert!(valid_range_slice (&v));
 /// v.push (6..=10);
 /// assert!(valid_range_slice (&v));
+/// v.push (15..=u8::MAX);
+/// assert!(valid_range_slice (&v));
 /// v.push (0..=1);
 /// assert!(!valid_range_slice (&v));
 /// # }
@@ -109,7 +111,7 @@ pub fn valid_range_slice <T, V> (ranges : V) -> bool where
       if this.is_empty() || next.is_empty() {
         return false
       }
-      if *next.start() <= *this.end()+T::one() {
+      if *next.start() <= this.end().saturating_add (T::one()) {
         return false
       }
     }
@@ -260,13 +262,13 @@ impl <A, T> RangeSet <A> where
   /// # use range_set::{RangeSet, range_set};
   /// # use std::ops::RangeInclusive;
   ///
-  /// let reference = range_set![1..=4, 6, 8..=10 ; 4];
+  /// let reference = range_set![1..=4, 6, 8..=10, (u32::MAX); 4];
   ///
   /// // Optimal ordering. Special O(n) applies.
-  /// let good = RangeSet::<[RangeInclusive<u32>; 4]>::from_elements([1, 2, 3, 4, 6, 8, 9, 10]);
+  /// let good = RangeSet::<[RangeInclusive<u32>; 4]>::from_elements([1, 2, 3, 4, 6, 8, 9, 10, u32::MAX]);
   ///
   /// // Random ordering. Very expensive.
-  /// let bad = RangeSet::<[RangeInclusive<u32>; 4]>::from_elements([2, 9, 6, 8, 1, 4, 10, 3, 4, 8]);
+  /// let bad = RangeSet::<[RangeInclusive<u32>; 4]>::from_elements([2, 9, 6, 8, 1, u32::MAX, 4, 10, 3, 4, 8]);
   ///
   /// assert_eq!(good, reference);
   /// assert_eq!(bad, reference);
@@ -278,7 +280,7 @@ impl <A, T> RangeSet <A> where
     for &element in elements.as_ref() {
       // current_range is updated every iteration.
       current_range = if let Some((start, end)) = current_range {
-        if element == end+T::one() {
+        if element == end.saturating_add (T::one()) {
           Some((start, element))
         } else {
           set.insert_range_optimistic(start..=end);
@@ -581,7 +583,7 @@ impl <A, T> RangeSet <A> where
   /// the end of the set.
   fn insert_range_optimistic (&mut self, range : A::Item) {
     if let Some(last) = self.ranges.last() {
-      if *last.end()+T::one() < *range.start() {
+      if last.end().saturating_add (T::one()) < *range.start() {
         self.ranges.push(range);
       } else {
         // Fallback on normal insert, and discard the return value.
@@ -763,7 +765,7 @@ impl <A, T> RangeSet <A> where
     while before != after {
       let i = before + (after - before) / 2;
       let last = before;
-      if *self.ranges[i].end()+T::one() < *range.start() {
+      if self.ranges[i].end().saturating_add (T::one()) < *range.start() {
         found  = true;
         before = i;
         if before == last {
@@ -789,7 +791,7 @@ impl <A, T> RangeSet <A> where
     while before != after {
       let i    = before + (after - before) / 2;
       let last = before;
-      if *range.end()+T::one() < *self.ranges[i].start() {
+      if range.end().saturating_add (T::one()) < *self.ranges[i].start() {
         found = true;
         after = i;
       } else {
@@ -1232,5 +1234,19 @@ mod tests {
 
     set.remove_range(2..=4);
     assert_eq!(set.min(), Some(5));
+  }
+
+  #[test]
+  fn test_random() {
+    use rand::{Rng, SeedableRng};
+    let mut rng = rand_xorshift::XorShiftRng::seed_from_u64 (0);
+    let mut s = RangeSet::<[RangeInclusive <u8>; 4]>::new();
+    for _ in 0..10000 {
+      s.insert_range (rng.gen()..=rng.gen());
+      s.insert (rng.gen());
+      s.remove_range (rng.gen()..=rng.gen());
+      s.remove (rng.gen());
+    }
+    println!("s: {:?}", s);
   }
 }
