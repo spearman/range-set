@@ -738,7 +738,7 @@ where
         debug_assert!(self.is_valid());
         Some(isect)
     }
-    /// Performs a set union of two SetRanges
+    /// Performs a set union of two RangeSets
     ///
     ///
     /// ```
@@ -748,9 +748,9 @@ where
     /// let mut o=range_set![3..=9, 13..=29];
     /// s.union(o);
     /// assert_eq!(s,range_set![1..=10, 13..=29]);
-    /// o = range_set![3..=12];
+    /// o = range_set![0..=12];
     /// s.union(o);
-    /// assert_eq!(s,range_set![1..=29]);
+    /// assert_eq!(s,range_set![0..=29]);
     ///
     /// ```
     pub fn union(&mut self, other: Self) {
