@@ -773,7 +773,7 @@ where
                     continue;
                 }
                 if *other.start() <= merging.1.add(T::one()) {
-                    merging.1 = max(merging.1, *range.end());
+                    merging.1 = max(merging.1, *other.end());
                     iter_other.next();
                     continue;
                 }
