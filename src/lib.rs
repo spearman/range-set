@@ -997,7 +997,7 @@ pub const DEFAULT_RANGE_COUNT: usize = 4;
 /// // The smallvec size is optional, and defaults to 4.
 /// assert_eq!(range_set![1..=3, 6..=15, 40, 42..=50], case2);
 ///
-/// // A wide variety of other formats are available. Complex epressions need to be surrounded
+/// // A wide variety of other formats are available. Complex expressions need to be surrounded
 /// // by parentheses.
 /// assert_eq!(range_set![0, 2, 3..=5; 3], case1);
 /// assert_eq!(range_set![0, 2, (1 + 2), 4, FIVE; 3], case1);
