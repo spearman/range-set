@@ -5,9 +5,6 @@
 //! that a certain amount of ranges will fit on the stack before spilling over
 //! to the heap.
 
-#![feature(test)]
-extern crate test;
-
 extern crate num_traits;
 #[cfg(feature = "derive_serdes")]
 extern crate serde;
@@ -688,85 +685,14 @@ impl <A, T> RangeSet <A> where
   /// # use range_set::{range_set, RangeSet};
   ///
   /// let mut s = range_set![1..=5, 7..=10, 25..= 28];
-  /// let mut o=range_set![3..=9, 13..=29];
-  /// s.union(o);
-  /// assert_eq!(s,range_set![1..=10, 13..=29]);
+  /// let mut o = range_set![3..=9, 13..=29];
+  /// let new = s.union(&o);
+  /// assert_eq!(new, range_set![1..=10, 13..=29]);
   /// o = range_set![0..=12];
-  /// s.union(o);
-  /// assert_eq!(s,range_set![0..=29]);
+  /// let new = new.union(&o);
+  /// assert_eq!(new, range_set![0..=29]);
   /// ```
-  // TODO: implement this as taking immutable references and returning a new
-  // merged rangeset?
-  pub fn union(&mut self, other : Self) {
-    // heuristic for size after union
-    let cap = self.ranges.capacity();
-    // we discard the old vector and merge the underlying vectors into a new one
-    let mut iter_self =
-      std::mem::replace(&mut self.ranges, SmallVec::with_capacity(cap))
-        .into_iter()
-        .peekable();
-    let mut iter_other = other.ranges.into_iter().peekable();
-    // temporary variable, used to save intermediary results when merging
-    // overlapping ranges (T,T) instead of RangeInclusive<T>, as you cannot
-    // change start and end of RangeInclusive
-    let mut maybe_merging : Option<(T, T)> = None;
-    while let (Some(range), Some(other)) =
-      (iter_self.peek(), iter_other.peek())
-    {
-      // if we have detected overlapping ranges
-      if let Some(merging) = &mut maybe_merging {
-        if *range.start() <= merging.1.add(T::one()) {
-          merging.1 = std::cmp::max(merging.1, *range.end());
-          iter_self.next();
-          continue
-        }
-        if *other.start() <= merging.1.add(T::one()) {
-          merging.1 = std::cmp::max(merging.1, *other.end());
-          iter_other.next();
-          continue
-        }
-        // no more overlaps detected
-        self.ranges.push(RangeInclusive::new(merging.0, merging.1));
-        maybe_merging = None;
-      }
-      if range.end() < &other.start().add(T::one()) {
-        self.ranges.push(range.clone());
-        iter_self.next();
-        continue
-      }
-      if other.end() < &range.start().add(T::one()) {
-        self.ranges.push(other.clone());
-        iter_other.next();
-        continue
-      }
-      // overlap detected
-      maybe_merging = Some((
-        std::cmp::min(*range.start(), *other.start()),
-        std::cmp::max(*range.end(), *other.end()),
-      ));
-
-      iter_self.next();
-      iter_other.next();
-    }
-    if iter_self.peek().is_none() {
-      std::mem::swap(&mut iter_self, &mut iter_other)
-    }
-
-    // attempt to merge with the remaining data
-    if let Some(mut merging) = maybe_merging {
-      for range in iter_self.by_ref() {
-        if *range.start() <= merging.1.add(T::one()) {
-          merging.1 = std::cmp::max(merging.1, *range.end());
-        } else {
-          break
-        }
-      }
-      self.ranges.push(RangeInclusive::new(merging.0, merging.1));
-    }
-    self.ranges.extend(iter_self);
-  }
-
-  pub fn union_new (&self, other : &Self) -> Self where A : Clone {
+  pub fn union (&self, other : &Self) -> Self where A : Clone {
     let mut new = (*self).clone();
     other.ranges.iter().cloned().for_each (|r| { new.insert_range (r); });
     new
@@ -1147,42 +1073,6 @@ macro_rules! __range_set_helper {
 mod tests {
   use std::ops::RangeInclusive;
   use crate::RangeSet;
-  use test::Bencher;
-
-  #[bench]
-  fn bench_union (b : &mut Bencher) {
-    let range = || {
-      let a = std::time::UNIX_EPOCH.elapsed().unwrap().as_nanos() as u64 % 10000;
-      let b = a + (std::time::UNIX_EPOCH.elapsed().unwrap().as_nanos() as u64 % 10000) % 10000;
-      u64::min(a, b)..=u64::max(a, b)
-    };
-    let range_set = || RangeSet::<[_; 4]>::from_ranges (
-      (0..1000).map (|_| range()).collect::<Vec <RangeInclusive <u64>>>()
-        .as_slice());
-    let rs = range_set();
-    b.iter(||{
-      let mut rs = rs.clone();
-      let other = range_set();
-      rs.union (other);
-    });
-  }
-
-  #[bench]
-  fn bench_union_new (b : &mut Bencher) {
-    let range = || {
-      let a = std::time::UNIX_EPOCH.elapsed().unwrap().as_nanos() as u64 % 10000;
-      let b = a + (std::time::UNIX_EPOCH.elapsed().unwrap().as_nanos() as u64 % 10000) % 10000;
-      u64::min(a, b)..=u64::max(a, b)
-    };
-    let range_set = || RangeSet::<[_; 4]>::from_ranges (
-      (0..1000).map (|_| range()).collect::<Vec <RangeInclusive <u64>>>()
-        .as_slice());
-    let rs = range_set();
-    b.iter(||{
-      let other = range_set();
-      let _ = rs.union_new (&other);
-    });
-  }
 
   #[test]
   fn merge_multiple() {
