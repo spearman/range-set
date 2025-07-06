@@ -692,19 +692,25 @@ impl <A, T> RangeSet <A> where
   /// s.union(o);
   /// assert_eq!(s,range_set![0..=29]);
   /// ```
-  pub fn union(&mut self, other: Self) {
+  // TODO: implement this as taking immutable references and returning a new
+  // merged rangeset?
+  pub fn union(&mut self, other : Self) {
     // heuristic for size after union
     let cap = self.ranges.capacity();
-    // we discard the old vector and merge the underlying vectors into a new one.
-    let mut iter_self = std::mem::replace(&mut self.ranges, SmallVec::with_capacity(cap))
-      .into_iter()
-      .peekable();
+    // we discard the old vector and merge the underlying vectors into a new one
+    let mut iter_self =
+      std::mem::replace(&mut self.ranges, SmallVec::with_capacity(cap))
+        .into_iter()
+        .peekable();
     let mut iter_other = other.ranges.into_iter().peekable();
-    // Temporary variable, used to save intermediary results when merging overlapping ranges
-    // (T,T) instead of RangeInclusive<T>, as you cannot change start and end of RangeInclusive
-    let mut maybe_merging: Option<(T, T)> = None;
-    while let (Some(range), Some(other)) = (iter_self.peek(), iter_other.peek()) {
-      // if we have detected overlapping ranges.
+    // temporary variable, used to save intermediary results when merging
+    // overlapping ranges (T,T) instead of RangeInclusive<T>, as you cannot
+    // change start and end of RangeInclusive
+    let mut maybe_merging : Option<(T, T)> = None;
+    while let (Some(range), Some(other)) =
+      (iter_self.peek(), iter_other.peek())
+    {
+      // if we have detected overlapping ranges
       if let Some(merging) = &mut maybe_merging {
         if *range.start() <= merging.1.add(T::one()) {
           merging.1 = std::cmp::max(merging.1, *range.end());
