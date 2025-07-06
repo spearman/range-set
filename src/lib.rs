@@ -304,6 +304,12 @@ impl <A, T> RangeSet <A> where
     self.ranges.is_empty()
   }
 
+  /// Return the number of elements in the set
+  #[inline]
+  pub fn len (&self) -> usize where T : num_traits::AsPrimitive <usize> {
+    self.ranges.iter().map(|r| r.end().as_() - r.start().as_()).sum()
+  }
+
   /// Clears the range set
   #[inline]
   pub fn clear (&mut self) {
@@ -683,6 +689,7 @@ impl <A, T> RangeSet <A> where
   ///
   /// To iterate over individual ranges, use `range_set.as_ref().iter()`
   /// instead.
+  #[allow(mismatched_lifetime_syntaxes)]
   pub fn iter (&self) -> Iter <A, T> {
     Iter {
       range_set:   self,

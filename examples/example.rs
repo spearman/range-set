@@ -65,6 +65,8 @@ fn main() {
   println!("s: {:?}", s);
   let s = range_set!(0..=3, 6..=10);
   println!("s: {:?}", s);
+  println!("s.len(): {}", s.len());
+  assert_eq!(s.len(), 9);
   let s = range_set!(0, 1, 2, 2, 3, 6, 7, 8, 8, 9, 10);
   println!("s: {:?}", s);
   let s = range_set![0..=(u32::MAX)];
