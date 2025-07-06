@@ -685,6 +685,25 @@ impl <A, T> RangeSet <A> where
     Some (isect)
   }
 
+  /// Performs a set union of two RangeSets
+  ///
+  /// ```
+  /// # use range_set::{range_set, RangeSet};
+  ///
+  /// let mut s = range_set![1..=5, 7..=10, 25..= 28];
+  /// let mut o = range_set![3..=9, 13..=29];
+  /// let new = s.union(&o);
+  /// assert_eq!(new, range_set![1..=10, 13..=29]);
+  /// o = range_set![0..=12];
+  /// let new = new.union(&o);
+  /// assert_eq!(new, range_set![0..=29]);
+  /// ```
+  pub fn union (&self, other : &Self) -> Self where A : Clone {
+    let mut new = (*self).clone();
+    other.ranges.iter().cloned().for_each (|r| { new.insert_range (r); });
+    new
+  }
+
   /// Iterate over elements of the `RangeSet`.
   ///
   /// To iterate over individual ranges, use `range_set.as_ref().iter()`
