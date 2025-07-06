@@ -5,6 +5,9 @@
 //! that a certain amount of ranges will fit on the stack before spilling over
 //! to the heap.
 
+#![feature(test)]
+extern crate test;
+
 extern crate num_traits;
 #[cfg(feature = "derive_serdes")]
 extern crate serde;
@@ -763,11 +766,17 @@ impl <A, T> RangeSet <A> where
     self.ranges.extend(iter_self);
   }
 
+  pub fn union_new (&self, other : &Self) -> Self where A : Clone {
+    let mut new = (*self).clone();
+    other.ranges.iter().cloned().for_each (|r| { new.insert_range (r); });
+    new
+  }
+
   /// Iterate over elements of the `RangeSet`.
   ///
   /// To iterate over individual ranges, use `range_set.as_ref().iter()`
   /// instead.
-  pub fn iter (&self) -> Iter <A, T> {
+  pub fn iter (&self) -> Iter <'_, A, T> {
     Iter {
       range_set:   self,
       range_index: 0,
@@ -1138,6 +1147,42 @@ macro_rules! __range_set_helper {
 mod tests {
   use std::ops::RangeInclusive;
   use crate::RangeSet;
+  use test::Bencher;
+
+  #[bench]
+  fn bench_union (b : &mut Bencher) {
+    let range = || {
+      let a = std::time::UNIX_EPOCH.elapsed().unwrap().as_nanos() as u64 % 10000;
+      let b = a + (std::time::UNIX_EPOCH.elapsed().unwrap().as_nanos() as u64 % 10000) % 10000;
+      u64::min(a, b)..=u64::max(a, b)
+    };
+    let range_set = || RangeSet::<[_; 4]>::from_ranges (
+      (0..1000).map (|_| range()).collect::<Vec <RangeInclusive <u64>>>()
+        .as_slice());
+    let rs = range_set();
+    b.iter(||{
+      let mut rs = rs.clone();
+      let other = range_set();
+      rs.union (other);
+    });
+  }
+
+  #[bench]
+  fn bench_union_new (b : &mut Bencher) {
+    let range = || {
+      let a = std::time::UNIX_EPOCH.elapsed().unwrap().as_nanos() as u64 % 10000;
+      let b = a + (std::time::UNIX_EPOCH.elapsed().unwrap().as_nanos() as u64 % 10000) % 10000;
+      u64::min(a, b)..=u64::max(a, b)
+    };
+    let range_set = || RangeSet::<[_; 4]>::from_ranges (
+      (0..1000).map (|_| range()).collect::<Vec <RangeInclusive <u64>>>()
+        .as_slice());
+    let rs = range_set();
+    b.iter(||{
+      let other = range_set();
+      let _ = rs.union_new (&other);
+    });
+  }
 
   #[test]
   fn merge_multiple() {
