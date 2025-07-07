@@ -304,10 +304,16 @@ impl <A, T> RangeSet <A> where
     self.ranges.is_empty()
   }
 
-  /// Return the number of elements in the set
+  /// Return the number of elements in the set.
+  ///
+  /// ```
+  /// # use range_set::range_set;
+  /// let s = range_set![1,2,3,6,7,11,12,13];
+  /// assert_eq!(s.len(), 8);
+  /// ```
   #[inline]
   pub fn len (&self) -> usize where T : num_traits::AsPrimitive <usize> {
-    self.ranges.iter().map(|r| r.end().as_() - r.start().as_()).sum()
+    self.ranges.iter().map (|r| r.end().as_() - r.start().as_() + 1).sum()
   }
 
   /// Clears the range set
