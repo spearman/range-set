@@ -19,11 +19,9 @@ jobs:
       - name: checkout
         uses: actions/checkout@v4
       - name: install
-        uses: actions-rs/toolchain@v1
+        uses: dtolnay/rust-toolchain@stable
         with:
           toolchain: stable
-          profile: minimal
-          override: true
           components: clippy
       - name: clippy
         run: cargo clippy --all-features
