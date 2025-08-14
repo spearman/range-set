@@ -1,0 +1,27 @@
+name: CI
+
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+
+env:
+  RUSTFLAGS: "-D warnings"
+
+jobs:
+  check:
+    container: rust:alpine
+
+    steps:
+      - name: checkout
+        uses: actions/checkout@v4
+      - name: clippy
+        run: cargo clippy --all-features
+      - name: check
+        run: cargo check --all-features
+
+  test:
+    container: rust:alpine
+      - name: test
+        run: cargo test --all-features
