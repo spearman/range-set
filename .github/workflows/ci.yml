@@ -13,13 +13,14 @@ env:
 jobs:
   check:
     runs-on: ubuntu-latest
-    container: rust:alpine
+    container: rust:1.89
 
     steps:
       - name: checkout
         uses: actions/checkout@v4
-      - name: bash  # required for dtolnay/rust-toolchain on alpine
-        run: apk add --no-cache bash
+      - uses: Swatinem/rust-cache@v2
+        with:
+          cache-all-crates: "true"
       - name: install
         uses: dtolnay/rust-toolchain@stable
         with:
@@ -30,10 +31,13 @@ jobs:
 
   test:
     runs-on: ubuntu-latest
-    container: rust:alpine
+    container: rust:1.89
     needs: check
     steps:
       - name: checkout
         uses: actions/checkout@v4
+      - uses: Swatinem/rust-cache@v2
+        with:
+          cache-all-crates: "true"
       - name: test
         run: cargo test --all-features
