@@ -94,7 +94,7 @@ pub fn range_compare <T : PrimInt> (
 pub fn intersection <T : PrimInt> (
   left : &std::ops::RangeInclusive <T>, right : &std::ops::RangeInclusive <T>
 ) -> std::ops::RangeInclusive <T> {
-  if let None = RangeDisjoint::compare (left, right) {
+  if RangeDisjoint::compare (left, right).is_none() {
     std::cmp::max (*left.start(), *right.start())..=
     std::cmp::min (*left.end(), *right.end())
   } else {
@@ -227,18 +227,18 @@ impl RangeIntersect {
         Some (if left == right {
           RangeIntersect::EqualTo
         } else {
-          match left.start().cmp (&right.start()) {
-            std::cmp::Ordering::Less => match left.end().cmp (&right.end()) {
+          match left.start().cmp (right.start()) {
+            std::cmp::Ordering::Less => match left.end().cmp (right.end()) {
               std::cmp::Ordering::Less    => RangeIntersect::OverlapsLeft,
               std::cmp::Ordering::Equal   => RangeIntersect::ContainsLast,
               std::cmp::Ordering::Greater => RangeIntersect::ContainsProper
             }
-            std::cmp::Ordering::Equal => match left.end().cmp (&right.end()) {
+            std::cmp::Ordering::Equal => match left.end().cmp (right.end()) {
               std::cmp::Ordering::Less    => RangeIntersect::ContainedByFirst,
               std::cmp::Ordering::Equal   => unreachable!(),
               std::cmp::Ordering::Greater => RangeIntersect::ContainsFirst
             }
-            std::cmp::Ordering::Greater => match left.end().cmp (&right.end()) {
+            std::cmp::Ordering::Greater => match left.end().cmp (right.end()) {
               std::cmp::Ordering::Less    => RangeIntersect::ContainedByProper,
               std::cmp::Ordering::Equal   => RangeIntersect::ContainedByLast,
               std::cmp::Ordering::Greater => RangeIntersect::OverlapsRight

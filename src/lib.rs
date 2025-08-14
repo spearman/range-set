@@ -191,6 +191,16 @@ pub fn report_sizes() {
 //
 // there are some helper functions with additional logic such as the
 // binary_search functions
+impl<A, T> Default for RangeSet <A>
+where
+  A : smallvec::Array <Item=RangeInclusive <T>> + Eq + std::fmt::Debug,
+  T : PrimInt + std::fmt::Debug
+ {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl <A, T> RangeSet <A> where
   A : smallvec::Array <Item=RangeInclusive <T>> + Eq + std::fmt::Debug,
   T : PrimInt + std::fmt::Debug
@@ -222,7 +232,11 @@ impl <A, T> RangeSet <A> where
     }
   }
 
-  /// Unchecked create from smallvec
+  /// Unchecked create from smallvec.
+  ///
+  /// # Safety
+  ///
+  /// There is a debug assertion to check if the ranges are valid.
   pub unsafe fn from_raw_parts (ranges : SmallVec <A>) -> Self {
     debug_assert!(valid_range_slice (ranges.as_slice()));
     RangeSet { ranges }
@@ -447,11 +461,7 @@ impl <A, T> RangeSet <A> where
   /// assert_eq!(s, RangeSet::<R>::from_ranges ([3..=5, 10..=10]));
   /// ```
   pub fn insert (&mut self, element : T) -> bool {
-    if let Some (_) = self.insert_range (element..=element) {
-      false
-    } else {
-      true
-    }
+    self.insert_range (element..=element).is_none()
   }
 
   /// Remove a single element, returning true if it was successfully removed
@@ -478,11 +488,7 @@ impl <A, T> RangeSet <A> where
   /// assert!(s.is_empty());
   /// ```
   pub fn remove (&mut self, element : T) -> bool {
-    if let Some (_) = self.remove_range (element..=element) {
-      true
-    } else {
-      false
-    }
+    self.remove_range (element..=element).is_some()
   }
 
   /// Returns the intersected values if the range is not disjoint
@@ -850,7 +856,7 @@ impl <A, T> RangeSet <A> where
       return false;
     }
     // Look for any the highest range completely before the requested elements.
-    let test_range = if let Some(before) = self.binary_search_before(&range) {
+    let test_range = if let Some(before) = self.binary_search_before(range) {
       // The very next range must either overlap with the requested elements, or must
       // be greater than all requested elements.
       if let Some(next) = self.ranges.get(before + 1) {
@@ -877,7 +883,7 @@ impl <A, T> RangeSet <A> where
     let mut isect = RangeSet::new();
     for i in range_range {
       let r     = &self.ranges[i];
-      let rsect = intersection (&range, &r);
+      let rsect = intersection (range, r);
       if !rsect.is_empty() {
         isect.ranges.push (rsect);
       }
@@ -946,15 +952,13 @@ impl <'a, A, T> Iterator for Iter <'a, A, T> where
   fn next (&mut self) -> Option <Self::Item> {
     if let Some (t) = self.range.next() {
       Some (t)
+    } else if self.range_index < self.range_set.ranges.len() {
+      self.range = self.range_set.ranges[self.range_index].clone();
+      debug_assert!(!self.range.is_empty());
+      self.range_index += 1;
+      self.range.next()
     } else {
-      if self.range_index < self.range_set.ranges.len() {
-        self.range = self.range_set.ranges[self.range_index].clone();
-        debug_assert!(!self.range.is_empty());
-        self.range_index += 1;
-        self.range.next()
-      } else {
-        None
-      }
+      None
     }
   }
 }
