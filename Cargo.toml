@@ -1,12 +1,12 @@
 [package]
 name = "range-set"
-version = "0.0.13"
+version = "0.1.0"
 authors = ["Shane Pearman <spearman@github.com>", "Alex Moon <alex.r.moon@gmail.com>"]
 license = "Apache-2.0"
 description = "Smallvec-backed containers of sorted integer ranges"
 repository = "https://github.com/spearman/range-set"
 readme = "README.md"
-edition = "2021"
+edition = "2024"
 
 [dependencies]
 num-traits = "0.2.*"
@@ -14,8 +14,8 @@ serde = { version = "1.*", optional = true }
 smallvec = { version = "1.*" }
 
 [dev-dependencies]
-rand = "0.8.*"
-rand_xorshift = "0.3.*"
+rand = "0.9.*"
+rand_xorshift = "0.4.*"
 
 [features]
 derive_serdes = ["serde", "smallvec/serde"]

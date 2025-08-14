@@ -1278,10 +1278,10 @@ mod tests {
     let mut rng = rand_xorshift::XorShiftRng::seed_from_u64 (0);
     let mut s = RangeSet::<[RangeInclusive <u8>; 4]>::new();
     for _ in 0..10000 {
-      s.insert_range (rng.gen()..=rng.gen());
-      s.insert (rng.gen());
-      s.remove_range (rng.gen()..=rng.gen());
-      s.remove (rng.gen());
+      s.insert_range (rng.random()..=rng.random());
+      s.insert (rng.random());
+      s.remove_range (rng.random()..=rng.random());
+      s.remove (rng.random());
     }
     println!("s: {:?}", s);
   }
