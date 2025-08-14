@@ -1,27 +1,39 @@
+---
 name: CI
 
 on:
   push:
-    branches: [ master ]
+    branches: [master]
   pull_request:
-    branches: [ master ]
+    branches: [master]
 
 env:
   RUSTFLAGS: "-D warnings"
 
 jobs:
   check:
+    runs-on: ubuntu-latest
     container: rust:alpine
 
     steps:
       - name: checkout
         uses: actions/checkout@v4
+      - name: install
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          profile: minimal
+          override: true
+          components: clippy
       - name: clippy
         run: cargo clippy --all-features
-      - name: check
-        run: cargo check --all-features
 
   test:
+    runs-on: ubuntu-latest
     container: rust:alpine
+    needs: check
+    steps:
+      - name: checkout
+        uses: actions/checkout@v4
       - name: test
         run: cargo test --all-features

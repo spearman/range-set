@@ -3,5 +3,6 @@ pkgs.mkShell {
   buildInputs = [
     rustup
     rust-analyzer
+    yamllint
   ];
 }
