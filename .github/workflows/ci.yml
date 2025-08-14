@@ -18,6 +18,8 @@ jobs:
     steps:
       - name: checkout
         uses: actions/checkout@v4
+      - name: bash  # required for dtolnay/rust-toolchain on alpine
+        run: apk add --no-cache bash
       - name: install
         uses: dtolnay/rust-toolchain@stable
         with:
