@@ -197,7 +197,7 @@ where
   T : PrimInt + std::fmt::Debug
  {
     fn default() -> Self {
-        Self::new()
+        RangeSet::new()
     }
 }
 
@@ -260,7 +260,7 @@ impl <A, T> RangeSet <A> where
   /// This method has been specially optimized for non-overlapping, non-
   /// adjacent ranges in ascending order.
   pub fn from_ranges <V : AsRef <[RangeInclusive <T>]>> (ranges : V) -> Self {
-    let mut ret = Self::new();
+    let mut ret = RangeSet::new();
     for range in ranges.as_ref() {
       ret.insert_range_optimistic(range.clone());
     }
@@ -289,7 +289,7 @@ impl <A, T> RangeSet <A> where
   /// ```
   pub fn from_elements <V : AsRef <[T]>> (elements : V) -> Self {
     let mut current_range : Option<(T, T)> = None;
-    let mut set = Self::new();
+    let mut set = RangeSet::new();
 
     for &element in elements.as_ref() {
       // current_range is updated every iteration.
@@ -697,7 +697,7 @@ impl <A, T> RangeSet <A> where
     Some (isect)
   }
 
-  /// Performs a set union of two RangeSets
+  /// Performs a set union of two `RangeSets`
   ///
   /// ```
   /// # use range_set::{range_set, RangeSet};
@@ -720,7 +720,7 @@ impl <A, T> RangeSet <A> where
   ///
   /// To iterate over individual ranges, use `range_set.as_ref().iter()`
   /// instead.
-  #[allow(mismatched_lifetime_syntaxes)]
+  #[expect(mismatched_lifetime_syntaxes)]
   pub fn iter (&self) -> Iter <A, T> {
     Iter {
       range_set:   self,
@@ -928,9 +928,9 @@ impl <A, T> AsRef <SmallVec <A>> for RangeSet <A> where
   }
 }
 
-/// This is a better PartialEq implementation than the derived one; it's
+/// This is a better `PartialEq` implementation than the derived one; it's
 /// generic over array sizes. Smallvec's array length should be an internal
-/// implementation detail, and shouldn't affect whether two RangeSets are
+/// implementation detail, and shouldn't affect whether two `RangeSets` are
 /// equal.
 impl<A, B> PartialEq<RangeSet<B>> for RangeSet<A> where
   A       : smallvec::Array + Eq + std::fmt::Debug,
@@ -942,9 +942,8 @@ impl<A, B> PartialEq<RangeSet<B>> for RangeSet<A> where
   }
 }
 
-impl <'a, A, T> Iterator for Iter <'a, A, T> where
-  A : smallvec::Array <Item=RangeInclusive <T>>
-    + Eq + std::fmt::Debug,
+impl <A, T> Iterator for Iter <'_, A, T> where
+  A : smallvec::Array <Item=RangeInclusive <T>> + Eq + std::fmt::Debug,
   T : PrimInt + std::fmt::Debug,
   RangeInclusive <T> : Clone + Iterator <Item=T>
 {
@@ -987,9 +986,7 @@ impl<'de, A, T> serde::Deserialize<'de> for RangeSet<A> where
   {
     let ranges = SmallVec::deserialize(deserializer)?;
 
-    Ok(Self {
-      ranges
-    })
+    Ok(RangeSet { ranges })
   }
 }
 
@@ -1000,7 +997,7 @@ impl<'de, A, T> serde::Deserialize<'de> for RangeSet<A> where
 /// The default size of the inner smallvec's on-stack array.
 pub const DEFAULT_RANGE_COUNT: usize = 4;
 
-/// Convenient macro to construct RangeSets without needing bulky notation like
+/// Convenient macro to construct `RangeSets` without needing bulky notation like
 /// `::<[RangeInclusive<_>; _]>`.  The macro allows a mix of numbers and
 /// inclusive ranges, with an optional length at the end for the smallvec array
 /// size. If the length is not specified, it will default to 4.
@@ -1107,7 +1104,7 @@ mod tests {
       }
     );
 
-    assert_eq!(range_set.ranges.into_vec(), vec!(1..=9));
+    assert_eq!(range_set.ranges.into_vec(), vec![1..=9]);
   }
 
   #[test]
@@ -1125,7 +1122,7 @@ mod tests {
       }
     );
 
-    assert_eq!(range_set.ranges.into_vec(), vec!(1..=7, 9..=9));
+    assert_eq!(range_set.ranges.into_vec(), vec![1..=7, 9..=9]);
   }
 
   #[test]
@@ -1143,7 +1140,7 @@ mod tests {
       }
     );
 
-    assert_eq!(range_set.ranges.into_vec(), vec!(1..=1, 3..=9));
+    assert_eq!(range_set.ranges.into_vec(), vec![1..=1, 3..=9]);
   }
 
   #[test]
@@ -1164,19 +1161,18 @@ mod tests {
       }
     );
 
-    assert_eq!(range_set.ranges.into_vec(), vec!(1..=1, 3..=7, 9..=9));
+    assert_eq!(range_set.ranges.into_vec(), vec![1..=1, 3..=7, 9..=9]);
   }
 
   #[test]
-  fn test_range_set_macro_empty() {
+  fn range_set_macro_empty() {
     assert_eq!(range_set![; 3], RangeSet::<[RangeInclusive<u8>; 3]>::new());
     assert_eq!(range_set![], RangeSet::<[RangeInclusive<u8>; 4]>::new());
   }
 
   // This allow is needed due to a rust linting bug: https://github.com/rust-lang/rust/issues/113563
-  #[allow(unused_parens)]
   #[test]
-  fn test_range_set_macro_nums() {
+  fn range_set_macro_nums() {
     let case1 = RangeSet::<[RangeInclusive<u8>; 3]>::from_valid_ranges (
       [0..=0, 2..=5]
     ).unwrap();
@@ -1201,9 +1197,9 @@ mod tests {
   }
 
   // This allow is needed due to a rust linting bug: https://github.com/rust-lang/rust/issues/113563
-  #[allow(unused_parens)]
+  #[expect(unused_parens)]
   #[test]
-  fn test_range_set_macro_mixed() {
+  fn range_set_macro_mixed() {
     let case1 = RangeSet::<[RangeInclusive<u8>; 3]>::from_valid_ranges (
       [0..=0, 2..=5]
     ).unwrap();
@@ -1237,7 +1233,7 @@ mod tests {
   }
 
   #[test]
-  fn test_max() {
+  fn max() {
     let mut set = RangeSet::<[RangeInclusive <u32>; 2]>::new();
     assert_eq!(set.max(), None);
 
@@ -1255,7 +1251,7 @@ mod tests {
   }
 
   #[test]
-  fn test_min() {
+  fn min() {
     let mut set = RangeSet::<[RangeInclusive <u32>; 2]>::new();
     assert_eq!(set.min(), None);
 
@@ -1273,7 +1269,7 @@ mod tests {
   }
 
   #[test]
-  fn test_random() {
+  fn random() {
     use rand::{Rng, SeedableRng};
     let mut rng = rand_xorshift::XorShiftRng::seed_from_u64 (0);
     let mut s = RangeSet::<[RangeInclusive <u8>; 4]>::new();
@@ -1283,6 +1279,6 @@ mod tests {
       s.remove_range (rng.random()..=rng.random());
       s.remove (rng.random());
     }
-    println!("s: {:?}", s);
+    println!("s: {s:?}");
   }
 }
