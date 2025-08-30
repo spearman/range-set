@@ -2,8 +2,9 @@
 
 set -e
 
+echo "+ git status --porcelain"
 git_status="$(git status --porcelain)"
-if test -n "$git_status"; then
+if [ "$git_status" != "" ]; then
   echo "$git_status"
   echo "pre-push hook failed: working directory is dirty"
   exit 1
@@ -16,7 +17,7 @@ if rg "FIXME" --hidden --glob="!$0" "$PWD"; then
   echo "pre-push hook failed: FIXME not allowed"
   exit 1
 fi
-cargo udeps --all-targets --all-features
+cargo +nightly udeps --all-targets --all-features
 export RUSTFLAGS="-D warnings"
 cargo clippy --all-targets --all-features
 cargo test --all-features

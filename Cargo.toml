@@ -20,6 +20,9 @@ rand_xorshift = "0.4.*"
 [features]
 derive_serdes = ["serde", "smallvec/serde"]
 
+[lints.rust]
+unknown-lints = "deny"
+
 [lints.clippy]
 allow-attributes = "warn"
 assertions-on-result-states = "warn"
@@ -34,7 +37,7 @@ cloned-instead-of-copied = "warn"
 collection-is-never-read = "warn"
 debug-assert-with-mut-call = "warn"
 derive-partial-eq-without-eq = "warn"
-doc-broken-link = "warn"
+#doc-broken-link = "warn"   # lint not available in rust 1.89
 doc-include-without-cfg = "warn"
 doc-link-code = "warn"
 doc-link-with-quotes = "warn"

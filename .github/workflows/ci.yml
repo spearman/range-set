@@ -9,6 +9,7 @@ on:
 
 env:
   RUSTFLAGS: "-D warnings"
+  RUSTUP_TOOLCHAIN: "1.89"
 
 jobs:
   check:
@@ -24,7 +25,7 @@ jobs:
       - name: install
         uses: dtolnay/rust-toolchain@stable
         with:
-          toolchain: stable
+          toolchain: 1.89
           components: clippy
       - name: clippy
         run: cargo clippy --all-targets --all-features
