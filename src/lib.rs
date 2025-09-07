@@ -1,14 +1,13 @@
 //! `RangeSet` container type.
 //!
-//! `RangeSet` stores collections of `PrimInt` values as inclusive ranges using
-//! generic [`SmallVec`](https://docs.rs/smallvec)-backed storage. This means
-//! that a certain amount of ranges will fit on the stack before spilling over
-//! to the heap.
+//! `RangeSet` stores collections of `PrimInt` values as inclusive ranges using generic
+//! [`SmallVec`](https://docs.rs/smallvec)-backed storage. This means that a certain
+//! amount of ranges will fit on the stack before spilling over to the heap.
 
-extern crate num_traits;
+use num_traits;
 #[cfg(feature = "derive_serdes")]
-extern crate serde;
-extern crate smallvec;
+use serde;
+use smallvec;
 
 pub mod range_compare;
 
@@ -20,15 +19,15 @@ use std::ops::RangeInclusive;
 use num_traits::PrimInt;
 use smallvec::SmallVec;
 
-////////////////////////////////////////////////////////////////////////////////
-//  structs                                                                   //
-////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////
+//  structs                                                                           //
+////////////////////////////////////////////////////////////////////////////////////////
 
-/// A set of primitive integers represented as a sorted list of disjoint,
-/// inclusive ranges.
+/// A set of primitive integers represented as a sorted list of disjoint, inclusive
+/// ranges.
 ///
-/// The generic parameter specifies the type of on-stack array to be used in the
-/// backing `SmallVec` storage.
+/// The generic parameter specifies the type of on-stack array to be used in the backing
+/// `SmallVec` storage.
 ///
 /// ```
 /// # extern crate smallvec;
@@ -66,7 +65,7 @@ pub struct RangeSet <A> where
 
 /// Iterates over elements of the `RangeSet`
 pub struct Iter <'a, A, T> where
-  A : 'a + smallvec::Array <Item=RangeInclusive <T>> + Eq + std::fmt::Debug,
+  A : smallvec::Array <Item=RangeInclusive <T>> + Eq + std::fmt::Debug,
   T : 'a + PrimInt + std::fmt::Debug
 {
   range_set   : &'a RangeSet <A>,
@@ -74,12 +73,12 @@ pub struct Iter <'a, A, T> where
   range       : RangeInclusive <T>
 }
 
-////////////////////////////////////////////////////////////////////////////////
-//  functions                                                                 //
-////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////
+//  functions                                                                         //
+////////////////////////////////////////////////////////////////////////////////////////
 
-/// Tests a slice of ranges for validity as a range set: the element ranges
-/// must be properly disjoint (not adjacent) and sorted.
+/// Tests a slice of ranges for validity as a range set: the element ranges must be
+/// properly disjoint (not adjacent) and sorted.
 ///
 /// ```
 /// # extern crate smallvec;
@@ -182,23 +181,22 @@ pub fn report_sizes() {
   println!("...RangeSet report sizes");
 }
 
-////////////////////////////////////////////////////////////////////////////////
-//  impls                                                                     //
-////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////
+//  impls                                                                             //
+////////////////////////////////////////////////////////////////////////////////////////
 
 // the majority of the logic for modifying range sets are the insert_range and
 // remove_range methods
 //
-// there are some helper functions with additional logic such as the
-// binary_search functions
-impl<A, T> Default for RangeSet <A>
-where
+// there are some helper functions with additional logic such as the binary_search
+// functions
+impl<A, T> Default for RangeSet <A> where
   A : smallvec::Array <Item=RangeInclusive <T>> + Eq + std::fmt::Debug,
   T : PrimInt + std::fmt::Debug
- {
-    fn default() -> Self {
-        RangeSet::new()
-    }
+{
+  fn default() -> Self {
+      RangeSet::new()
+  }
 }
 
 impl <A, T> RangeSet <A> where
@@ -208,18 +206,14 @@ impl <A, T> RangeSet <A> where
   /// New empty range set
   #[inline]
   pub fn new() -> Self {
-    RangeSet {
-      ranges: SmallVec::new()
-    }
+    RangeSet { ranges: SmallVec::new() }
   }
 
-  /// New empty range set with the internal smallvec initialized with the given
-  /// initial capacity
+  /// New empty range set with the internal smallvec initialized with the given initial
+  /// capacity
   #[inline]
   pub fn with_capacity (capacity : usize) -> Self {
-    RangeSet {
-      ranges: SmallVec::with_capacity (capacity)
-    }
+    RangeSet { ranges: SmallVec::with_capacity (capacity) }
   }
 
   /// Returns a new range set if the given smallvec is valid and sorted
@@ -257,8 +251,8 @@ impl <A, T> RangeSet <A> where
 
   /// Constructs a new range set from an array or vector of inclusive ranges.
   ///
-  /// This method has been specially optimized for non-overlapping, non-
-  /// adjacent ranges in ascending order.
+  /// This method has been specially optimized for non-overlapping, non-adjacent ranges
+  /// in ascending order.
   pub fn from_ranges <V : AsRef <[RangeInclusive <T>]>> (ranges : V) -> Self {
     let mut ret = RangeSet::new();
     for range in ranges.as_ref() {
@@ -269,8 +263,8 @@ impl <A, T> RangeSet <A> where
 
   /// Constructs a new range set from a slice of numbers.
   ///
-  /// This method has been specially optimized for deduplicated arrays, sorted
-  /// in ascending order. Construction time is O(n) for these arrays.
+  /// This method has been specially optimized for deduplicated arrays, sorted in
+  /// ascending order. Construction time is O(n) for these arrays.
   ///
   /// ```
   /// # use range_set::{RangeSet, range_set};
@@ -395,8 +389,8 @@ impl <A, T> RangeSet <A> where
     self.contains_range_ref(&range)
   }
 
-  /// Returns `true` if the set is a superset of another, i.e., `self` contains
-  /// at least all the elements in `other`.
+  /// Returns `true` if the set is a superset of another, i.e., `self` contains at least
+  /// all the elements in `other`.
   ///
   /// ```
   /// # use range_set::RangeSet;
@@ -413,8 +407,8 @@ impl <A, T> RangeSet <A> where
     other.is_subset(self)
   }
 
-  /// Returns `true` if the set is a subset of another, i.e., `other` contains
-  /// at least all the elements in `self`.
+  /// Returns `true` if the set is a subset of another, i.e., `other` contains at least
+  /// all the elements in `self`.
   ///
   /// ```
   /// # use range_set::RangeSet;
@@ -441,8 +435,8 @@ impl <A, T> RangeSet <A> where
     self.ranges.first().map(|r| *r.start())
   }
 
-  /// Insert a single element, returning true if it was successfully inserted
-  /// or else false if it was already present
+  /// Insert a single element, returning true if it was successfully inserted or else
+  /// false if it was already present.
   ///
   /// ```
   /// # use range_set::RangeSet;
@@ -464,8 +458,8 @@ impl <A, T> RangeSet <A> where
     self.insert_range (element..=element).is_none()
   }
 
-  /// Remove a single element, returning true if it was successfully removed
-  /// or else false if it was not present
+  /// Remove a single element, returning true if it was successfully removed or else
+  /// false if it was not present.
   ///
   /// ```
   /// # use range_set::RangeSet;
@@ -491,8 +485,8 @@ impl <A, T> RangeSet <A> where
     self.remove_range (element..=element).is_some()
   }
 
-  /// Returns the intersected values if the range is not disjoint
-  /// with the curret range set.
+  /// Returns the intersected values if the range is not disjoint with the curret range
+  /// set.
   ///
   /// ```
   /// # use range_set::RangeSet;
@@ -512,11 +506,11 @@ impl <A, T> RangeSet <A> where
     let before = Self::binary_search_before_proper (self, &range);
     let after  = Self::binary_search_after_proper  (self, &range);
     match (before, after) {
-      // no existing ranges are properly greater than or less than the range:
-      // this means that both the first range and the last range are either
-      // intersected with or adjacent to the given range, implying that the
-      // range set will be fused to a single range containing the min and max
-      // of the intersection of the given range and the existing range set
+      // no existing ranges are properly greater than or less than the range: this means
+      // that both the first range and the last range are either intersected with or
+      // adjacent to the given range, implying that the range set will be fused to a
+      // single range containing the min and max of the intersection of the given range
+      // and the existing range set
       (None, None) => {
         let isect = self.range_intersection (&range, 0..self.ranges.len());
         let new_range =
@@ -536,8 +530,7 @@ impl <A, T> RangeSet <A> where
           self.ranges.push (range);
           None
         } else {  // otherwise merge into last range
-          let isect
-            = self.range_intersection (&range, before+1..self.ranges.len());
+          let isect = self.range_intersection (&range, before+1..self.ranges.len());
           self.ranges[before+1] =
             std::cmp::min (*range.start(), *self.ranges[before+1].start())..=
             std::cmp::max (*range.end(), *self.ranges[self.ranges.len()-1].end());
@@ -569,8 +562,8 @@ impl <A, T> RangeSet <A> where
           }
         }
       }
-      // there are ranges both properly less than and properly greater than the
-      // given range
+      // there are ranges both properly less than and properly greater than the given
+      // range
       (Some (before), Some (after)) => {
         if before+1 == after {  // insert between ranges
           self.ranges.insert (before+1, range);
@@ -582,8 +575,7 @@ impl <A, T> RangeSet <A> where
             std::cmp::max (*range.end(), *self.ranges[after-1].end());
           // if there are more than one ranges between we must shift and truncate
           if 1 < after - before - 1 {
-            self.ranges.as_mut_slice()[(before + 2)..]
-              .rotate_left (after - before - 2);
+            self.ranges.as_mut_slice()[(before + 2)..].rotate_left (after - before - 2);
             let new_len = self.ranges.len() - (after - before - 2);
             self.ranges.truncate (new_len);
           }
@@ -597,8 +589,8 @@ impl <A, T> RangeSet <A> where
     }
   } // end fn insert_range
 
-  /// This is like `insert_range`, but has O(1) runtime if `range` is placed at
-  /// the end of the set.
+  /// This is like `insert_range`, but has O(1) runtime if `range` is placed at the end
+  /// of the set.
   fn insert_range_optimistic (&mut self, range : A::Item) {
     if let Some(last) = self.ranges.last() {
       if last.end().saturating_add (T::one()) < *range.start() {
@@ -646,9 +638,7 @@ impl <A, T> RangeSet <A> where
     // a split range is only possible if there was a single intersection
     if isect_last - isect_first == 1 {
       let single_range = self.ranges[isect_first].clone();
-      if single_range.start() < range.start() &&
-        range.end() < single_range.end()
-      {
+      if single_range.start() < range.start() && range.end() < single_range.end() {
         let left  = *single_range.start()..=*range.start() - T::one();
         let right = *range.end() + T::one()..=*single_range.end();
         self.ranges[isect_first] = right;
@@ -657,8 +647,8 @@ impl <A, T> RangeSet <A> where
       }
     }
 
-    // one or more range intersected: the range of intersected ranges will be
-    // reduced to zero, one, or two ranges
+    // one or more range intersected: the range of intersected ranges will be reduced to
+    // zero, one, or two ranges
     let first = self.ranges[isect_first].clone();
     let last  = self.ranges[isect_last-1].clone();
 
@@ -683,7 +673,7 @@ impl <A, T> RangeSet <A> where
       self.ranges[isect_first] =
         *self.ranges[isect_first].start()..=*range.start() - T::one();
       self.ranges[isect_last-1] =
-        *range.end()   + T::one()..=*self.ranges[isect_last-1].end();
+        *range.end() + T::one()..=*self.ranges[isect_last-1].end();
       (isect_first+1, isect_last-1)
     };
     // remove ranges, shift later ranges and truncate
@@ -718,8 +708,7 @@ impl <A, T> RangeSet <A> where
 
   /// Iterate over elements of the `RangeSet`.
   ///
-  /// To iterate over individual ranges, use `range_set.as_ref().iter()`
-  /// instead.
+  /// To iterate over individual ranges, use `range_set.as_ref().iter()` instead.
   #[expect(mismatched_lifetime_syntaxes)]
   pub fn iter (&self) -> Iter <A, T> {
     Iter {
@@ -768,8 +757,7 @@ impl <A, T> RangeSet <A> where
   }
 
   /// Insert helper function: search for the first range in self that is
-  /// `GreaterThanAdjacent` or `GreaterThanProper` when compared with the given
-  /// range
+  /// `GreaterThanAdjacent` or `GreaterThanProper` when compared with the given range
   fn binary_search_after (&self, range : &A::Item) -> Option <usize> {
     let mut before = 0;
     let mut after  = self.ranges.len();
@@ -794,8 +782,8 @@ impl <A, T> RangeSet <A> where
     }
   }
 
-  /// Insert helper function: search for the last range in self that is
-  /// `LessThanProper` when compared with the given range
+  /// Insert helper function: search for the last range in self that is `LessThanProper`
+  /// when compared with the given range
   fn binary_search_before_proper (&self, range : &A::Item) -> Option <usize> {
     let mut before = 0;
     let mut after  = self.ranges.len();
@@ -850,36 +838,35 @@ impl <A, T> RangeSet <A> where
   /// `is_subset`
   fn contains_range_ref (&self, range : &A::Item) -> bool {
     if range.is_empty() {
-      return true;
+      return true
     }
     if self.ranges.is_empty() {
-      return false;
+      return false
     }
     // Look for any the highest range completely before the requested elements.
     let test_range = if let Some(before) = self.binary_search_before(range) {
-      // The very next range must either overlap with the requested elements, or must
-      // be greater than all requested elements.
+      // The very next range must either overlap with the requested elements, or must be
+      // greater than all requested elements.
       if let Some(next) = self.ranges.get(before + 1) {
         next
       } else {
         // There are no other ranges to check.
-        return false;
+        return false
       }
     } else {
       // There are no ranges completely before the requested elements, so try the first
-      // range. This index operation cannot fail, because we checked self.ranges.is_empty()
-      // above.
+      // range. This index operation cannot fail, because we checked
+      // self.ranges.is_empty() above.
       &self.ranges[0]
     };
     // Check if that range contains all the requested elements.
     test_range.contains(range.start()) && test_range.contains(range.end())
   }
 
-  /// Return the intersection of a given range with the given range of ranges in
-  /// self
-  fn range_intersection (&self,
-    range : &A::Item, range_range : std::ops::Range <usize>
-  ) -> Self {
+  /// Return the intersection of a given range with the given range of ranges in self
+  fn range_intersection (&self, range : &A::Item, range_range : std::ops::Range <usize>)
+    -> Self
+  {
     let mut isect = RangeSet::new();
     for i in range_range {
       let r     = &self.ranges[i];
@@ -892,11 +879,11 @@ impl <A, T> RangeSet <A> where
     isect
   }
 
-  /// Internal validity check: all ranges are non-empty, disjoint proper with
-  /// respect to one another, and sorted.
+  /// Internal validity check: all ranges are non-empty, disjoint proper with respect to
+  /// one another, and sorted.
   ///
-  /// Invalid range sets should be impossible to create so this function is not
-  /// exposed to the user.
+  /// Invalid range sets should be impossible to create so this function is not exposed
+  /// to the user.
   #[inline]
   fn is_valid (&self) -> bool {
     valid_range_slice (&self.ranges)
@@ -904,8 +891,7 @@ impl <A, T> RangeSet <A> where
 }
 
 impl <A, T> From <RangeInclusive <T>> for RangeSet <A> where
-  A : smallvec::Array <Item=RangeInclusive <T>>
-    + Eq + std::fmt::Debug,
+  A : smallvec::Array <Item=RangeInclusive <T>> + Eq + std::fmt::Debug,
   T : PrimInt + std::fmt::Debug
 {
   fn from (range : RangeInclusive <T>) -> Self {
@@ -919,8 +905,7 @@ impl <A, T> From <RangeInclusive <T>> for RangeSet <A> where
 }
 
 impl <A, T> AsRef <SmallVec <A>> for RangeSet <A> where
-  A : smallvec::Array <Item=RangeInclusive <T>>
-    + Eq + std::fmt::Debug,
+  A : smallvec::Array <Item=RangeInclusive <T>> + Eq + std::fmt::Debug,
   T : PrimInt + std::fmt::Debug
 {
   fn as_ref (&self) -> &SmallVec <A> {
@@ -928,10 +913,9 @@ impl <A, T> AsRef <SmallVec <A>> for RangeSet <A> where
   }
 }
 
-/// This is a better `PartialEq` implementation than the derived one; it's
-/// generic over array sizes. Smallvec's array length should be an internal
-/// implementation detail, and shouldn't affect whether two `RangeSets` are
-/// equal.
+/// This is a better `PartialEq` implementation than the derived one; it's generic over
+/// array sizes. Smallvec's array length should be an internal implementation detail,
+/// and shouldn't affect whether two `RangeSets` are equal.
 impl<A, B> PartialEq<RangeSet<B>> for RangeSet<A> where
   A       : smallvec::Array + Eq + std::fmt::Debug,
   A::Item : Clone + Eq + std::fmt::Debug,
@@ -964,24 +948,20 @@ impl <A, T> Iterator for Iter <'_, A, T> where
 
 #[cfg(feature = "derive_serdes")]
 impl<A, T> serde::Serialize for RangeSet<A> where
-  A : smallvec::Array <Item=RangeInclusive <T>>
-    + Eq + std::fmt::Debug,
+  A : smallvec::Array <Item=RangeInclusive <T>> + Eq + std::fmt::Debug,
   T : PrimInt + std::fmt::Debug + serde::Serialize,
 {
-  fn serialize<S: serde::Serializer>(&self, serializer: S)
-    -> Result<S::Ok, S::Error>
-  {
+  fn serialize <S: serde::Serializer> (&self, serializer: S) -> Result<S::Ok, S::Error> {
     self.ranges.serialize(serializer)
   }
 }
 
 #[cfg(feature = "derive_serdes")]
 impl<'de, A, T> serde::Deserialize<'de> for RangeSet<A> where
-  A : smallvec::Array <Item=RangeInclusive <T>>
-    + Eq + std::fmt::Debug,
+  A : smallvec::Array <Item=RangeInclusive <T>> + Eq + std::fmt::Debug,
   T : PrimInt + std::fmt::Debug + serde::Deserialize<'de>,
 {
-  fn deserialize<D: serde::Deserializer<'de>>(deserializer: D)
+  fn deserialize <D: serde::Deserializer<'de>> (deserializer: D)
     -> Result<Self, D::Error>
   {
     let ranges = SmallVec::deserialize(deserializer)?;
@@ -990,26 +970,25 @@ impl<'de, A, T> serde::Deserialize<'de> for RangeSet<A> where
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
-//  macros                                                                    //
-////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////
+//  macros                                                                            //
+////////////////////////////////////////////////////////////////////////////////////////
 
 /// The default size of the inner smallvec's on-stack array.
 pub const DEFAULT_RANGE_COUNT: usize = 4;
 
 /// Convenient macro to construct `RangeSets` without needing bulky notation like
-/// `::<[RangeInclusive<_>; _]>`.  The macro allows a mix of numbers and
-/// inclusive ranges, with an optional length at the end for the smallvec array
-/// size. If the length is not specified, it will default to 4.
+/// `::<[RangeInclusive<_>; _]>`.  The macro allows a mix of numbers and inclusive
+/// ranges, with an optional length at the end for the smallvec array size. If the
+/// length is not specified, it will default to 4.
 ///
-/// The implementation guarantees `O(n)` construction time for lists of
-/// non-adjacent mix of increasing-ranges and numbers in increasing order. See
-/// [`RangeSet::from_ranges`] for more information about this
-/// optimization.  Single numbers are transformed into one-element inclusive
-/// ranges (`5` becomes `5..=5`).
+/// The implementation guarantees `O(n)` construction time for lists of non-adjacent mix
+/// of increasing-ranges and numbers in increasing order. See [`RangeSet::from_ranges`]
+/// for more information about this optimization.  Single numbers are transformed into
+/// one-element inclusive ranges (`5` becomes `5..=5`).
 ///
-/// Separately, the implementation guarantees `O(n)` construction time for lists
-/// of numbers (not ranges) sorted in increasing order and deduplicated. See
+/// Separately, the implementation guarantees `O(n)` construction time for lists of
+/// numbers (not ranges) sorted in increasing order and deduplicated. See
 /// `[RangeSet::from_elements`] for more information about this optimization.
 ///
 /// All other cases are reasonably performant, `O(n * log(n))` on average.
@@ -1073,8 +1052,7 @@ macro_rules! range_set {
   };
 }
 
-/// Helper macro that resolves the ambiguity between literal numbers and literal
-/// ranges.
+/// Helper macro that resolves the ambiguity between literal numbers and literal ranges.
 #[macro_export]
 #[doc(hidden)]
 macro_rules! __range_set_helper {
@@ -1170,7 +1148,6 @@ mod tests {
     assert_eq!(range_set![], RangeSet::<[RangeInclusive<u8>; 4]>::new());
   }
 
-  // This allow is needed due to a rust linting bug: https://github.com/rust-lang/rust/issues/113563
   #[test]
   fn range_set_macro_nums() {
     let case1 = RangeSet::<[RangeInclusive<u8>; 3]>::from_valid_ranges (
@@ -1196,13 +1173,13 @@ mod tests {
     assert_eq!(counter, 1);
   }
 
-  // This allow is needed due to a rust linting bug: https://github.com/rust-lang/rust/issues/113563
+  // This expect is needed due to a rust linting bug:
+  // https://github.com/rust-lang/rust/issues/113563
   #[expect(unused_parens)]
   #[test]
   fn range_set_macro_mixed() {
-    let case1 = RangeSet::<[RangeInclusive<u8>; 3]>::from_valid_ranges (
-      [0..=0, 2..=5]
-    ).unwrap();
+    let case1 = RangeSet::<[RangeInclusive<u8>; 3]>::from_valid_ranges ([0..=0, 2..=5])
+      .unwrap();
     let case2 = RangeSet::<[RangeInclusive<u8>; 4]>::from_valid_ranges (
       [1..=3, 6..=15, 40..=40, 42..=50]
     ).unwrap();
@@ -1223,13 +1200,11 @@ mod tests {
     assert_eq!(counter, 1);
 
     assert_eq!(range_set![0, 2, 3, 5; 8],
-      RangeSet::<[RangeInclusive<u8>; 8]>::from_valid_ranges (
-        [0..=0, 2..=3, 5..=5]
-      ).unwrap());
+      RangeSet::<[RangeInclusive<u8>; 8]>::from_valid_ranges ([0..=0, 2..=3, 5..=5])
+        .unwrap());
     assert_eq!(range_set![0..=0, 2..=2, (not_token_tree(4) + 1)..=5],
-      RangeSet::<[RangeInclusive<u8>; 4]>::from_valid_ranges (
-        [0..=0, 2..=2, 5..=5]
-      ).unwrap());
+      RangeSet::<[RangeInclusive<u8>; 4]>::from_valid_ranges ([0..=0, 2..=2, 5..=5])
+        .unwrap());
   }
 
   #[test]

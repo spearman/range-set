@@ -1,5 +1,3 @@
-extern crate range_set;
-
 use range_set::{range_set, RangeSet};
 use std::ops::RangeInclusive;
 

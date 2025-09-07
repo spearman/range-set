@@ -21,9 +21,26 @@ rand_xorshift = "0.4.*"
 derive_serdes = ["serde", "smallvec/serde"]
 
 [lints.rust]
-unknown-lints = "deny"
+ambiguous-negative-literals = "warn"
+closure-returning-async-block = "warn"
+explicit-outlives-requirements = "warn"
+linker-messages = "warn"
+meta-variable-misuse = "warn"
+redundant-lifetimes = "warn"
+trivial-numeric-casts = "warn"
+unit-bindings = "warn"
+unknown-lints = "warn"
+unnameable-types = "warn"
+unreachable-pub = "warn"
+unused-extern-crates = "warn"
+unused-import-braces = "warn"
+unused-lifetimes = "warn"
+unused-macro-rules = "warn"
+unused-qualifications = "warn"
 
 [lints.clippy]
+single-component-path-imports = "allow"
+# additional lints
 allow-attributes = "warn"
 assertions-on-result-states = "warn"
 bool-to-int-with-if = "warn"
