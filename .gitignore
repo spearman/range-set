@@ -2,3 +2,5 @@
 **/*.rs.bk
 Cargo.lock
 rust-analyzer.log
+dependencies.dot
+dependencies.png
