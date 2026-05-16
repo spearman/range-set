@@ -1245,7 +1245,7 @@ mod tests {
 
   #[test]
   fn random() {
-    use rand::{Rng, SeedableRng};
+    use rand::{RngExt, SeedableRng};
     let mut rng = rand_xorshift::XorShiftRng::seed_from_u64 (0);
     let mut s = RangeSet::<[RangeInclusive <u8>; 4]>::new();
     for _ in 0..10000 {
