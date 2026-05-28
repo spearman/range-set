@@ -1,10 +1,9 @@
 with import <nixpkgs> {};
-pkgs.mkShell {
+mkShell {
   buildInputs = [
     cargo-udeps
     gh
     rustup
-    rust-analyzer
     yamllint
   ];
 }
