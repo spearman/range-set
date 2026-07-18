@@ -1,5 +1,18 @@
 # `range-set`
 
+[![Latest Version]][crates.io] [![Rust Version]][Rust 1.85] [![License]][license-file] [![Documentation]][docs] [![Build Status]][actions]
+
+[Latest Version]: https://img.shields.io/crates/v/range-set.svg
+[crates.io]: https://crates.io/crates/range-set
+[Rust Version]: https://img.shields.io/crates/msrv/range-set.svg
+[Rust 1.85]: https://blog.rust-lang.org/2025/03/18/Rust-1.85.1/
+[License]: https://img.shields.io/crates/l/range-set.svg
+[license-file]: https://github.com/spearman/range-set/blob/master/LICENSE
+[Documentation]: https://docs.rs/range-set/badge.svg
+[docs]: https://docs.rs/range-set
+[Build Status]: https://img.shields.io/github/actions/workflow/status/spearman/range-set/ci.yml
+[actions]: https://github.com/spearman/range-set/actions
+
 > Store collections of `PrimInt` values as inclusive ranges using generic
 > `SmallVec`-backed storage.
 
