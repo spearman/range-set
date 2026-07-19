@@ -1,4 +1,4 @@
-# `range-set`
+# `range_set`
 
 [![Latest Version]][crates.io] [![Rust Version]][Rust 1.85] [![License]][license-file] [![Documentation]][docs] [![Build Status]][actions]
 
